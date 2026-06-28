@@ -10,7 +10,7 @@ var cachedSpreadsheet = null;
 // Custom web app entry point
 function doGet(e) {
   // Ensure database sheets exist (only checked once on page load)
-  initDatabase();
+  try { initDatabase(); } catch(initErr) { console.error('initDatabase error: ' + initErr.message); }
   
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
@@ -70,8 +70,13 @@ function initDatabase() {
   var taskSheet = ss.getSheetByName('SubTasks');
   if (!taskSheet) {
     taskSheet = ss.insertSheet('SubTasks');
-    taskSheet.appendRow(['ID', 'Document ID', 'Title', 'Assignee', 'Deadline', 'Status']);
-    taskSheet.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#f3f4f6');
+    taskSheet.appendRow(['ID', 'Document ID', 'Title', 'Assignee', 'Deadline', 'Status', 'Event ID']);
+    taskSheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#f3f4f6');
+  } else {
+    var tHeaders = taskSheet.getRange(1, 1, 1, taskSheet.getLastColumn()).getValues()[0];
+    if (tHeaders.indexOf('Event ID') === -1) {
+      taskSheet.getRange(1, tHeaders.length + 1).setValue('Event ID').setFontWeight('bold').setBackground('#f3f4f6');
+    }
   }
   
   // 3. Employees Sheet
@@ -82,9 +87,7 @@ function initDatabase() {
     empSheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#f3f4f6');
     
     // Add default sample employees
-    empSheet.appendRow(['EMP-1', 'Nguyễn Văn A', 'Phòng Hành chính']);
-    empSheet.appendRow(['EMP-2', 'Trần Thị B', 'Phòng Kế hoạch']);
-    empSheet.appendRow(['EMP-3', 'Lê Văn C', 'Phòng Kỹ thuật']);
+    empSheet.appendRow(['EMP-1', 'Nguyễn Văn A', 'Phòng Kỹ thuật']);
   }
   
   // 4. Settings Sheet
@@ -95,10 +98,22 @@ function initDatabase() {
     settingsSheet.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#f3f4f6');
     
     // Default settings
-    settingsSheet.appendRow(['reminderHour', '8']);
+    settingsSheet.appendRow(['reminderTime', '08:00']);
     settingsSheet.appendRow(['warningDays', '3']);
     settingsSheet.appendRow(['emailEnabled', 'true']);
     settingsSheet.appendRow(['popupEnabled', 'true']);
+    settingsSheet.appendRow(['calendarEnabled', 'false']);
+    settingsSheet.appendRow(['calendarReminderMinutes', '60']);
+  } else {
+    var sData = settingsSheet.getDataRange().getValues();
+    var hasCal = false;
+    var hasCalRem = false;
+    for(var i=0; i<sData.length; i++) {
+      if(sData[i][0] === 'calendarEnabled') hasCal = true;
+      if(sData[i][0] === 'calendarReminderMinutes') hasCalRem = true;
+    }
+    if(!hasCal) settingsSheet.appendRow(['calendarEnabled', 'false']);
+    if(!hasCalRem) settingsSheet.appendRow(['calendarReminderMinutes', '60']);
   }
 }
 
@@ -156,7 +171,25 @@ function formatDateString(date) {
   var yyyy = date.getFullYear();
   var mm = String(date.getMonth() + 1).padStart(2, '0');
   var dd = String(date.getDate()).padStart(2, '0');
-  return yyyy + '-' + mm + '-' + dd;
+  var hh = String(date.getHours()).padStart(2, '0');
+  var min = String(date.getMinutes()).padStart(2, '0');
+  
+  if (hh === '00' && min === '00') {
+    return yyyy + '-' + mm + '-' + dd;
+  } else {
+    return yyyy + '-' + mm + '-' + dd + ' ' + hh + ':' + min;
+  }
+}
+
+function parseDateTime(val) {
+  if (val instanceof Date) return val;
+  if (!val) return null;
+  var str = String(val).trim();
+  var normalized = str.replace(' ', 'T');
+  if (normalized.length === 10) {
+    return new Date(normalized + 'T23:59:59');
+  }
+  return new Date(normalized);
 }
 
 // --- GETTERS ---
@@ -178,9 +211,12 @@ function getSettingsData(ss) {
   var settings = {};
   list.forEach(function(row) {
     var val = row.Value;
-    if (val === 'true') val = true;
-    else if (val === 'false') val = false;
-    else if (!isNaN(val) && val !== '') val = Number(val);
+    if (typeof val === 'string') {
+      var lower = val.toLowerCase().trim();
+      if (lower === 'true') val = true;
+      else if (lower === 'false') val = false;
+      else if (val !== '' && !isNaN(val)) val = Number(val);
+    }
     settings[row.Key] = val;
   });
   return settings;
@@ -210,6 +246,23 @@ function addDocument(doc) {
 
 function updateDocument(doc) {
   var ss = getSpreadsheet();
+  
+  // Validate that new document deadline is not earlier than any existing subtask deadlines
+  if (doc.deadline) {
+    var taskSheet = ss.getSheetByName('SubTasks');
+    var tasksData = taskSheet.getDataRange().getValues();
+    var newDocDeadlineTime = parseDateTime(doc.deadline).getTime();
+    
+    for (var i = 1; i < tasksData.length; i++) {
+      if (tasksData[i][1] === doc.id && tasksData[i][4]) {
+        var subDeadlineTime = parseDateTime(tasksData[i][4]).getTime();
+        if (subDeadlineTime > newDocDeadlineTime) {
+          throw new Error('Hạn chót văn bản không được sớm hơn hạn chót của các công việc con hiện có!');
+        }
+      }
+    }
+  }
+
   var sheet = ss.getSheetByName('Documents');
   var data = sheet.getDataRange().getValues();
   
@@ -246,6 +299,8 @@ function deleteDocument(docId) {
   // Delete from bottom up to avoid index shifting problems
   for (var j = taskData.length - 1; j >= 1; j--) {
     if (taskData[j][1] === docId) {
+      var eventId = taskData[j][6];
+      try { if (eventId) syncToCalendar('DELETE', null, eventId); } catch(e) { console.error('Calendar sync failed: ' + e.message); }
       taskSheet.deleteRow(j + 1);
     }
   }
@@ -257,8 +312,31 @@ function deleteDocument(docId) {
 
 function addSubTask(task) {
   var ss = getSpreadsheet();
+  
+  // Validate subtask deadline against parent document deadline
+  var docSheet = ss.getSheetByName('Documents');
+  var docsData = docSheet.getDataRange().getValues();
+  var parentDocDeadline = null;
+  for (var i = 1; i < docsData.length; i++) {
+    if (docsData[i][0] === task.docId) {
+      parentDocDeadline = docsData[i][5];
+      break;
+    }
+  }
+  
+  if (parentDocDeadline && task.deadline) {
+    var pTime = parseDateTime(parentDocDeadline).getTime();
+    var tTime = parseDateTime(task.deadline).getTime();
+    if (tTime > pTime) {
+      throw new Error('Hạn chót công việc con không được vượt quá hạn chót của văn bản cha!');
+    }
+  }
+
   var sheet = ss.getSheetByName('SubTasks');
   var id = 'TSK-' + Date.now() + Math.floor(Math.random() * 100);
+  
+  var eventId = '';
+  try { eventId = syncToCalendar('CREATE', task, null) || ''; } catch(e) { console.error('Calendar sync failed: ' + e.message); }
   
   var row = [
     id,
@@ -266,7 +344,8 @@ function addSubTask(task) {
     task.title,
     task.assignee,
     task.deadline,
-    'Todo' // Initial status
+    'Todo', // Initial status
+    eventId
   ];
   
   sheet.appendRow(row);
@@ -276,19 +355,54 @@ function addSubTask(task) {
 
 function updateSubTask(task) {
   var ss = getSpreadsheet();
-  var sheet = ss.getSheetByName('SubTasks');
-  var data = sheet.getDataRange().getValues();
   
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === task.id) {
-      var rowNum = i + 1;
-      sheet.getRange(rowNum, 3).setValue(task.title);
-      sheet.getRange(rowNum, 4).setValue(task.assignee);
-      sheet.getRange(rowNum, 5).setValue(task.deadline);
-      sheet.getRange(rowNum, 6).setValue(task.status);
+  // Validate subtask deadline against parent document deadline
+  var docSheet = ss.getSheetByName('Documents');
+  var docsData = docSheet.getDataRange().getValues();
+  var parentDocDeadline = null;
+  for (var i = 1; i < docsData.length; i++) {
+    if (docsData[i][0] === task.docId) {
+      parentDocDeadline = docsData[i][5];
       break;
     }
   }
+  
+  if (parentDocDeadline && task.deadline) {
+    var pTime = parseDateTime(parentDocDeadline).getTime();
+    var tTime = parseDateTime(task.deadline).getTime();
+    if (tTime > pTime) {
+      throw new Error('Hạn chót công việc con không được vượt quá hạn chót của văn bản cha!');
+    }
+  }
+
+  var sheet = ss.getSheetByName('SubTasks');
+  var data = sheet.getDataRange().getValues();
+  
+  var oldEventId = '';
+  var rowNum = -1;
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === task.id) {
+      rowNum = i + 1;
+      oldEventId = data[i][6];
+      break;
+    }
+  }
+  
+  if (rowNum > -1) {
+    var newEventId = '';
+    try { newEventId = syncToCalendar('UPDATE', task, oldEventId) || ''; } catch(e) { console.error('Calendar sync failed: ' + e.message); newEventId = oldEventId || ''; }
+    
+    sheet.getRange(rowNum, 3).setValue(task.title);
+    sheet.getRange(rowNum, 4).setValue(task.assignee);
+    sheet.getRange(rowNum, 5).setValue(task.deadline);
+    sheet.getRange(rowNum, 6).setValue(task.status);
+    
+    var lastCol = sheet.getLastColumn();
+    if (lastCol < 7) { sheet.getRange(1, 7).setValue('Event ID'); }
+    sheet.getRange(rowNum, 7).setValue(newEventId);
+  }
+  
   recalculateDocProgress(ss, task.docId);
   return getInitialData(ss);
 }
@@ -300,6 +414,8 @@ function deleteSubTask(taskId, docId) {
   
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === taskId) {
+      var oldEventId = data[i][6];
+      try { if (oldEventId) syncToCalendar('DELETE', null, oldEventId); } catch(e) { console.error('Calendar sync failed: ' + e.message); }
       sheet.deleteRow(i + 1);
       break;
     }
@@ -315,6 +431,16 @@ function toggleSubTaskStatus(taskId, docId, status) {
   
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === taskId) {
+      var oldEventId = data[i][6];
+      var action = status === 'Done' ? 'COMPLETE' : 'INCOMPLETE';
+      var taskData = {
+        docId: data[i][1],
+        title: data[i][2],
+        assignee: data[i][3],
+        deadline: data[i][4]
+      };
+      try { if (oldEventId) syncToCalendar(action, taskData, oldEventId); } catch(e) { console.error('Calendar sync failed: ' + e.message); }
+      
       sheet.getRange(i + 1, 6).setValue(status);
       break;
     }
@@ -414,6 +540,120 @@ function deleteEmployee(empId) {
   return getInitialData(ss);
 }
 
+// --- CALENDAR SYNCHRONIZATION ---
+
+function syncToCalendar(action, taskData, oldEventId) {
+  var ss = getSpreadsheet();
+  var settings = getSettingsData(ss);
+  if (!settings.calendarEnabled) return oldEventId || null;
+  if (!taskData || !taskData.deadline) return oldEventId || null;
+  
+  var calendar = CalendarApp.getDefaultCalendar();
+  if (!calendar) return oldEventId || null;
+  
+  var eventDate = new Date(taskData.deadline);
+  var isAllDay = (taskData.deadline.length <= 10);
+  
+  var docName = '';
+  if (taskData.docId) {
+    var docs = getDocumentsList(ss);
+    for (var j = 0; j < docs.length; j++) {
+      if (docs[j].ID === taskData.docId) {
+        docName = docs[j]['Document Name'];
+        break;
+      }
+    }
+  }
+  var docSuffix = docName ? ' [' + docName + ']' : '';
+  var eventTitle = taskData.title + '_' + taskData.assignee + docSuffix;
+  
+  var managerEmail = settings.emailRecipient || '';
+  
+  var reminderMin = Number(settings.calendarReminderMinutes);
+  if (isNaN(reminderMin)) reminderMin = 60;
+  
+  try {
+    if (action === 'CREATE') {
+      var event;
+      if (isAllDay) {
+        event = calendar.createAllDayEvent(eventTitle, eventDate);
+      } else {
+        var endDate = new Date(eventDate.getTime() + 15 * 60000);
+        event = calendar.createEvent(eventTitle, eventDate, endDate);
+      }
+      
+      if (managerEmail && managerEmail !== Session.getActiveUser().getEmail()) {
+        event.addGuest(managerEmail);
+      }
+      
+      event.removeAllReminders();
+      event.addPopupReminder(reminderMin);
+      
+      return event.getId();
+      
+    } else if (action === 'UPDATE' && oldEventId) {
+      var event = calendar.getEventById(oldEventId);
+      if (event) {
+        event.setTitle(eventTitle);
+        if (isAllDay) {
+          var curStart = event.getAllDayStartDate();
+          if (!curStart || curStart.getTime() !== eventDate.getTime()) {
+            event.setAllDayDate(eventDate);
+          }
+        } else {
+          var endDate = new Date(eventDate.getTime() + 15 * 60000);
+          event.setTime(eventDate, endDate);
+        }
+        
+        event.removeAllReminders();
+        event.addPopupReminder(reminderMin);
+      } else {
+        var newEvent;
+        if (isAllDay) {
+          newEvent = calendar.createAllDayEvent(eventTitle, eventDate);
+        } else {
+          var endDate = new Date(eventDate.getTime() + 15 * 60000);
+          newEvent = calendar.createEvent(eventTitle, eventDate, endDate);
+        }
+        
+        if (managerEmail && managerEmail !== Session.getActiveUser().getEmail()) {
+          newEvent.addGuest(managerEmail);
+        }
+        
+        newEvent.removeAllReminders();
+        newEvent.addPopupReminder(reminderMin);
+        return newEvent.getId();
+      }
+      return oldEventId;
+      
+    } else if (action === 'DELETE' && oldEventId) {
+      var event = calendar.getEventById(oldEventId);
+      if (event) event.deleteEvent();
+      return null;
+      
+    } else if (action === 'COMPLETE' && oldEventId) {
+      var event = calendar.getEventById(oldEventId);
+      if (event) {
+        event.setColor(CalendarApp.EventColor.PALE_GREEN);
+        event.setTitle('✅ ' + eventTitle);
+      }
+      return oldEventId;
+      
+    } else if (action === 'INCOMPLETE' && oldEventId) {
+      var event = calendar.getEventById(oldEventId);
+      if (event) {
+        event.setColor(''); 
+        event.setTitle(eventTitle);
+      }
+      return oldEventId;
+    }
+  } catch (e) {
+    console.error('Calendar error: ' + e.message);
+    return oldEventId || null;
+  }
+  return oldEventId || null;
+}
+
 // --- SETTINGS & TRIGGERS ---
 
 function saveSettings(settings) {
@@ -428,15 +668,15 @@ function saveSettings(settings) {
   }
   
   // Update Time Trigger based on settings
-  var hour = Number(settings.reminderHour) || 8;
+  var timeStr = settings.reminderTime || '08:00';
   var emailEnabled = settings.emailEnabled;
   
-  setupTrigger(hour, emailEnabled);
+  setupTrigger(timeStr, emailEnabled);
   
   return getInitialData(ss);
 }
 
-function setupTrigger(hour, emailEnabled) {
+function setupTrigger(timeStr, emailEnabled) {
   var triggerName = 'sendDailyReminders';
   var triggers = ScriptApp.getProjectTriggers();
   
@@ -448,11 +688,23 @@ function setupTrigger(hour, emailEnabled) {
   }
   
   // Create new one if emails are enabled
-  if (emailEnabled) {
+  if (emailEnabled && timeStr) {
+    var parts = timeStr.split(':');
+    var hour = parseInt(parts[0], 10) || 8;
+    var minute = parseInt(parts[1], 10) || 0;
+    
+    // In Google Apps Script, nearMinute requires 0, 15, 30, or 45
+    var validMinute = Math.round(minute / 15) * 15;
+    if (validMinute === 60) {
+      validMinute = 0;
+      hour = (hour + 1) % 24;
+    }
+    
     ScriptApp.newTrigger(triggerName)
       .timeBased()
       .everyDays(1)
       .atHour(hour)
+      .nearMinute(validMinute)
       .create();
   }
 }
@@ -520,7 +772,7 @@ function sendDailyReminders() {
   // Send email if there's any task to notify
   if (overdueTasks.length > 0 || todayTasks.length > 0 || warningTasks.length > 0) {
     var emailBody = buildHtmlEmail(overdueTasks, todayTasks, warningTasks);
-    var recipient = Session.getActiveUser().getEmail();
+    var recipient = settings.emailRecipient || Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
     
     if (recipient) {
       MailApp.sendEmail({
@@ -555,7 +807,7 @@ function testEmail() {
   ];
   
   var emailBody = buildHtmlEmail(overdueTasks, todayTasks, warningTasks);
-  var recipient = Session.getActiveUser().getEmail();
+  var recipient = settings.emailRecipient || Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
   
   if (recipient) {
     MailApp.sendEmail({

@@ -1,7 +1,7 @@
 <script>
   /**
    * Document Task Management System
-   * Client-side Logic (JavaScript.html)
+   * Client-side Logic — v2.0 SaaS Upgrade
    */
 
   // Global Application State
@@ -28,7 +28,7 @@
     loadInitialData();
   });
 
-  // --- THEME MANAGEMENT ---
+  // ─── THEME MANAGEMENT ───────────────────────────────
 
   function initTheme() {
     var savedTheme = localStorage.getItem('app-theme') || 'light';
@@ -36,18 +36,15 @@
 
     document.getElementById('theme-toggle-btn').addEventListener('click', function () {
       var currentTheme = document.documentElement.getAttribute('data-theme');
-      var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      setTheme(newTheme);
+      setTheme(currentTheme === 'dark' ? 'light' : 'dark');
     });
   }
 
   function setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('app-theme', theme);
-
     var icon = document.getElementById('theme-icon');
     var text = document.getElementById('theme-text');
-
     if (theme === 'dark') {
       icon.textContent = 'light_mode';
       text.textContent = 'Chế độ sáng';
@@ -57,32 +54,27 @@
     }
   }
 
-  // --- NAVIGATION & ROUTER ---
+  // ─── NAVIGATION & ROUTER ────────────────────────────
 
   function setupNavigation() {
     document.querySelectorAll('.nav-link').forEach(function (link) {
       link.addEventListener('click', function () {
-        var target = this.getAttribute('data-target');
-        switchView(target);
+        switchView(this.getAttribute('data-target'));
       });
     });
   }
 
   function switchView(viewId) {
-    document.querySelectorAll('.section-view').forEach(function (view) {
-      view.classList.remove('active');
+    document.querySelectorAll('.section-view').forEach(function (v) {
+      v.classList.remove('active');
     });
     document.getElementById(viewId).classList.add('active');
-
     document.querySelectorAll('.nav-link').forEach(function (link) {
-      link.classList.remove('active');
-      if (link.getAttribute('data-target') === viewId) {
-        link.classList.add('active');
-      }
+      link.classList.toggle('active', link.getAttribute('data-target') === viewId);
     });
   }
 
-  // --- LOADER & NOTIFICATIONS ---
+  // ─── LOADER & NOTIFICATIONS ─────────────────────────
 
   function showLoader(show) {
     var overlay = document.getElementById('loading-overlay');
@@ -91,122 +83,85 @@
       overlay.style.opacity = '1';
     } else {
       overlay.style.opacity = '0';
-      setTimeout(function () {
-        overlay.style.display = 'none';
-      }, 400);
+      setTimeout(function () { overlay.style.display = 'none'; }, 400);
     }
   }
 
-  // Custom Premium Toast Notification
   function showToast(message, type) {
-    type = type || 'success'; // success, error, warning, info
-
-    // Find or create toast container
+    type = type || 'success';
     var container = document.getElementById('toast-container');
     if (!container) {
       container = document.createElement('div');
       container.id = 'toast-container';
-      container.style.position = 'fixed';
-      container.style.bottom = '24px';
-      container.style.right = '24px';
-      container.style.zIndex = '9999';
-      container.style.display = 'flex';
-      container.style.flexDirection = 'column';
-      container.style.gap = '10px';
+      Object.assign(container.style, {
+        position: 'fixed', bottom: '24px', right: '24px',
+        zIndex: '9999', display: 'flex', flexDirection: 'column', gap: '10px'
+      });
       document.body.appendChild(container);
     }
 
-    var toast = document.createElement('div');
-    toast.className = 'toast';
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var colors = {
+      success: { icon: 'check_circle', color: '#10b981' },
+      error: { icon: 'error', color: '#ef4444' },
+      warning: { icon: 'warning', color: '#f59e0b' },
+      info: { icon: 'info', color: '#3b82f6' }
+    };
+    var c = colors[type] || colors.success;
 
-    // Colors & Icons based on type
-    var bg = 'rgba(255, 255, 255, 0.95)';
-    var border = '1px solid rgba(226, 232, 240, 0.8)';
-    var color = '#0f172a';
-    var icon = 'check_circle';
-    var iconColor = '#10b981';
-
-    if (document.documentElement.getAttribute('data-theme') === 'dark') {
-      bg = 'rgba(30, 41, 59, 0.95)';
-      border = '1px solid rgba(255, 255, 255, 0.05)';
-      color = '#f8fafc';
-    }
-
-    if (type === 'error') {
-      icon = 'error';
-      iconColor = '#ef4444';
-    } else if (type === 'warning') {
-      icon = 'warning';
-      iconColor = '#f59e0b';
-    } else if (type === 'info') {
-      icon = 'info';
-      iconColor = '#3b82f6';
-    }
-
-    toast.style.background = bg;
-    toast.style.border = border;
-    toast.style.borderLeft = '4px solid ' + iconColor;
-    toast.style.color = color;
-    toast.style.padding = '12px 20px';
-    toast.style.borderRadius = '8px';
-    toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)';
-    toast.style.display = 'flex';
-    toast.style.alignItems = 'center';
-    toast.style.gap = '12px';
-    toast.style.fontSize = '14px';
-    toast.style.fontWeight = '500';
-    toast.style.minWidth = '280px';
-    toast.style.maxWidth = '400px';
-    toast.style.backdropFilter = 'blur(10px)';
-    toast.style.animation = 'toastSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-
-    // Style for animation
-    var styleTag = document.getElementById('toast-animation-style');
-    if (!styleTag) {
-      styleTag = document.createElement('style');
+    // Inject animation style once
+    if (!document.getElementById('toast-animation-style')) {
+      var styleTag = document.createElement('style');
       styleTag.id = 'toast-animation-style';
       styleTag.innerHTML = `
-      @keyframes toastSlideIn {
-        from { transform: translateX(120%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-      }
-      @keyframes toastFadeOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(120%); opacity: 0; }
-      }
-    `;
+        @keyframes toastIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+      `;
       document.head.appendChild(styleTag);
     }
 
-    toast.innerHTML = `
-    <i class="material-icons" style="color: ${iconColor};">${icon}</i>
-    <div style="flex-grow: 1;">${message}</div>
-  `;
-
+    var toast = document.createElement('div');
+    Object.assign(toast.style, {
+      background: isDark ? 'rgba(42, 38, 34, 0.97)' : 'rgba(255,255,255,0.97)',
+      border: '1px solid ' + (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(226,232,240,0.9)'),
+      borderLeft: '4px solid ' + c.color,
+      color: isDark ? '#ede8e1' : '#1c1916',
+      padding: '12px 18px',
+      borderRadius: '8px',
+      boxShadow: '0 10px 24px rgba(0,0,0,0.12)',
+      display: 'flex', alignItems: 'center', gap: '12px',
+      fontSize: '13.5px', fontWeight: '500',
+      minWidth: '280px', maxWidth: '400px',
+      animation: 'toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+    });
+    toast.innerHTML = `<i class="material-icons" style="color:${c.color};font-size:20px;">${c.icon}</i><div style="flex-grow:1;">${message}</div>`;
     container.appendChild(toast);
 
-    // Auto remove toast after 3.5s
     setTimeout(function () {
-      toast.style.animation = 'toastFadeOut 0.3s ease forwards';
-      setTimeout(function () {
-        toast.remove();
-      }, 300);
+      toast.style.animation = 'toastOut 0.3s ease forwards';
+      setTimeout(function () { toast.remove(); }, 300);
     }, 3500);
   }
 
-  // --- DATA FETCHING ---
+  // ─── DATA FETCHING ───────────────────────────────────
 
   function loadInitialData() {
     showLoader(true);
     google.script.run
       .withSuccessHandler(function (data) {
-        appState = data;
-        renderAll();
-        showLoader(false);
+        try {
+          appState = data;
+          renderAll();
+        } catch (e) {
+          console.error('renderAll error: ' + e.message + ' | Stack: ' + e.stack);
+          showToast('Lỗi hiển thị dữ liệu: ' + e.message, 'error');
+        } finally {
+          showLoader(false);
+        }
       })
       .withFailureHandler(function (err) {
         showLoader(false);
-        showToast('Không thể tải dữ liệu từ Google Sheets: ' + err.message, 'error');
+        showToast('Không thể tải dữ liệu: ' + err.message, 'error');
       })
       .getInitialData();
   }
@@ -220,7 +175,7 @@
     renderSettingsForm();
   }
 
-  // --- DROP DOWNS CONFIG ---
+  // ─── DROPDOWNS ───────────────────────────────────────
 
   function populateDropdowns() {
     var filterEmp = document.getElementById('filter-employee');
@@ -240,92 +195,60 @@
     subtaskAssignee.innerHTML = formOptions;
   }
 
-  // --- DASHBOARD RENDERER ---
+  // ─── DASHBOARD RENDERER ──────────────────────────────
 
   function renderDashboard() {
     var today = new Date();
     today.setHours(0, 0, 0, 0);
 
     var total = appState.documents.length;
-    var completed = 0;
-    var doing = 0;
-    var overdue = 0;
+    var completed = 0, doing = 0, overdue = 0;
+    var urgentTasks = [], overdueDocsList = [];
 
-    var urgentTasks = [];
-
-    // --- Thống kê số lượng theo trạng thái ---
     appState.documents.forEach(function (doc) {
-      var progressVal = parseInt(doc.Progress) || 0;
       var deadlineDate = doc.Deadline ? new Date(doc.Deadline) : null;
       if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
+      var isOver = deadlineDate && deadlineDate < today && doc.Status !== 'Hoàn thành';
 
-      var isOverdue = deadlineDate && deadlineDate < today && doc.Status !== 'Hoàn thành';
+      if (doc.Status === 'Hoàn thành') { completed++; }
+      else if (isOver) { overdue++; }
+      else { doing++; }
 
-      if (doc.Status === 'Hoàn thành') {
-        completed++;
-      } else if (isOverdue) {
-        overdue++;
-      } else if (doc.Status === 'Đang xử lý' || progressVal > 0) {
-        doing++;
-      } else {
-        doing++;
-      }
-    });
-
-    // --- Tìm Sub-tasks sắp đến hạn (urgentTasks) ---
-    appState.subTasks.forEach(function (task) {
-      if (task.Status === 'Done') return;
-      if (!task.Deadline) return;
-
-      var taskDeadline = new Date(task.Deadline);
-      taskDeadline.setHours(0, 0, 0, 0);
-
-      var timeDiff = taskDeadline.getTime() - today.getTime();
-      var dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-      var parentDoc = appState.documents.find(d => d.ID === task['Document ID']);
-      var docName = parentDoc ? parentDoc['Document Name'] : 'Văn bản';
-      var docNum = parentDoc ? parentDoc['Document Number'] : '';
-
-      if (dayDiff >= 0 && dayDiff <= (appState.settings.warningDays || 3)) {
-        urgentTasks.push({
-          id: task.ID,
-          title: task.Title,
-          assignee: task.Assignee,
-          deadline: task.Deadline,
-          docId: task['Document ID'],
-          docName: docName,
-          docNum: docNum
-        });
-      }
-    });
-
-    // --- Tìm Văn bản bị quá hạn (overdueDocsList) ---
-    var overdueDocsList = [];
-    appState.documents.forEach(function (doc) {
-      if (doc.Status === 'Hoàn thành') return;
-      if (!doc.Deadline) return;
-      var deadlineDate = new Date(doc.Deadline);
-      deadlineDate.setHours(0, 0, 0, 0);
-      if (deadlineDate < today) {
+      if (isOver) {
         var docTasks = appState.subTasks.filter(t => t['Document ID'] === doc.ID);
-        var doneTasks = docTasks.filter(t => t.Status === 'Done').length;
-        var daysOverdue = Math.ceil((today.getTime() - deadlineDate.getTime()) / (1000 * 3600 * 24));
+        var daysOverdue = Math.ceil((today.getTime() - deadlineDate.getTime()) / 86400000);
         overdueDocsList.push({
           id: doc.ID,
           docNumber: doc['Document Number'] || '-',
           docName: doc['Document Name'],
           deadline: doc.Deadline,
           status: doc.Status,
-          progress: parseInt(doc.Progress) || 0,
           taskTotal: docTasks.length,
-          taskDone: doneTasks,
+          taskDone: docTasks.filter(t => t.Status === 'Done').length,
           daysOverdue: daysOverdue
         });
       }
     });
 
-    // Cập nhật các thẻ thống kê
+    appState.subTasks.forEach(function (task) {
+      if (task.Status === 'Done' || !task.Deadline) return;
+      var taskDeadline = new Date(task.Deadline);
+      taskDeadline.setHours(0, 0, 0, 0);
+      var dayDiff = Math.ceil((taskDeadline - today) / 86400000);
+      if (dayDiff >= 0 && dayDiff <= (appState.settings.warningDays || 3)) {
+        var parentDoc = appState.documents.find(d => d.ID === task['Document ID']);
+        urgentTasks.push({
+          id: task.ID,
+          title: task.Title,
+          assignee: task.Assignee,
+          deadline: task.Deadline,
+          docId: task['Document ID'],
+          docName: parentDoc ? parentDoc['Document Name'] : 'Văn bản',
+          docNum: parentDoc ? parentDoc['Document Number'] : ''
+        });
+      }
+    });
+
     document.getElementById('stat-total-docs').textContent = total;
     document.getElementById('stat-doing-docs').textContent = doing;
     document.getElementById('stat-done-docs').textContent = completed;
@@ -334,189 +257,253 @@
     var overdueList = document.getElementById('overdue-tasks-list');
     var urgentList = document.getElementById('urgent-tasks-list');
 
-    // --- Render: Văn bản bị quá hạn ---
     if (overdueDocsList.length === 0) {
-      overdueList.innerHTML = `
-      <div class="empty-state">
-        <i class="material-icons" style="color: #10b981;">check_circle_outline</i>
-        <p>Không có văn bản nào bị quá hạn!</p>
-      </div>
-    `;
+      overdueList.innerHTML = `<div class="empty-state"><i class="material-icons" style="color:#10b981;">check_circle_outline</i><p>Không có văn bản nào bị quá hạn!</p></div>`;
     } else {
-      var overdueHtml = '';
-      overdueDocsList.forEach(function (doc) {
-        overdueHtml += `
-        <div class="dashboard-list-item" onclick="viewDocumentDetails('${doc.id}')" style="cursor: pointer;">
-          <div class="item-main">
-            <span class="item-title">
-              <i class="material-icons" style="font-size:15px; vertical-align:middle; color:#ef4444; margin-right:4px;">description</i>
-              <strong>[${doc.docNumber}]</strong> ${doc.docName}
-            </span>
-            <span class="item-meta">
-              Trễ <strong style="color:#ef4444;">${doc.daysOverdue} ngày</strong>
-              &nbsp;&bull;&nbsp; Tiến độ: <strong>${doc.taskDone}/${doc.taskTotal}</strong> việc xong
-              &nbsp;&bull;&nbsp; Trạng thái: ${doc.status}
-            </span>
-          </div>
-          <span class="badge badge-overdue" style="font-size: 10px; white-space: nowrap;">HẠN: ${doc.deadline}</span>
-        </div>
-      `;
-      });
-      overdueList.innerHTML = overdueHtml;
+      overdueList.innerHTML = overdueDocsList.map(function (doc) {
+        return `
+          <div class="dashboard-list-item" onclick="viewDocumentDetails('${doc.id}')" style="cursor:pointer;">
+            <div class="item-main">
+              <span class="item-title">
+                <i class="material-icons" style="font-size:14px;vertical-align:middle;color:#ef4444;margin-right:4px;">description</i>
+                <strong>[${doc.docNumber}]</strong> ${doc.docName}
+              </span>
+              <span class="item-meta">
+                Trễ <strong style="color:#ef4444;">${doc.daysOverdue} ngày</strong>
+                &nbsp;&bull;&nbsp; Tiến độ: <strong>${doc.taskDone}/${doc.taskTotal}</strong> việc xong
+              </span>
+            </div>
+            <span class="badge badge-overdue" style="white-space:nowrap;">HẠN: ${doc.deadline}</span>
+          </div>`;
+      }).join('');
     }
 
-    // --- Render: Sub-tasks sắp đến hạn ---
     if (urgentTasks.length === 0) {
-      urgentList.innerHTML = `
-      <div class="empty-state">
-        <i class="material-icons" style="color: #4f46e5;">sentiment_very_satisfied</i>
-        <p>Không có công việc khẩn cấp trong vài ngày tới.</p>
-      </div>
-    `;
+      urgentList.innerHTML = `<div class="empty-state"><i class="material-icons">sentiment_very_satisfied</i><p>Không có công việc khẩn cấp trong vài ngày tới.</p></div>`;
     } else {
-      var urgentHtml = '';
-      urgentTasks.forEach(function (t) {
-        urgentHtml += `
-        <div class="dashboard-list-item" onclick="viewDocumentDetails('${t.docId}')" style="cursor: pointer;">
-          <div class="item-main">
-            <span class="item-title">${t.title}</span>
-            <span class="item-meta">Giao cho: <strong>${t.assignee}</strong> | VB: ${t.docNum} - ${t.docName}</span>
-          </div>
-          <span class="badge badge-doing" style="font-size: 10px;">${t.deadline}</span>
-        </div>
-      `;
-      });
-      urgentList.innerHTML = urgentHtml;
+      urgentList.innerHTML = urgentTasks.map(function (t) {
+        return `
+          <div class="dashboard-list-item" onclick="viewDocumentDetails('${t.docId}')" style="cursor:pointer;">
+            <div class="item-main">
+              <span class="item-title">${t.title}</span>
+              <span class="item-meta">Giao cho: <strong>${t.assignee}</strong> | VB: ${t.docNum} - ${t.docName}</span>
+            </div>
+            <span class="badge badge-doing">${t.deadline}</span>
+          </div>`;
+      }).join('');
     }
   }
 
-  // --- DOCUMENTS RENDERER ---
+  // ─── DOCUMENTS RENDERER ──────────────────────────────
 
   function renderDocumentsTable() {
     var tbody = document.getElementById('documents-table-body');
-
-    // Filter settings
     var searchVal = document.getElementById('search-document-input').value.toLowerCase().trim();
     var statusVal = document.getElementById('filter-status').value;
     var empVal = document.getElementById('filter-employee').value;
+    var receiveFrom = document.getElementById('filter-receive-from').value;
+    var receiveTo = document.getElementById('filter-receive-to').value;
+    var deadlineFrom = document.getElementById('filter-deadline-from').value;
+    var deadlineTo = document.getElementById('filter-deadline-to').value;
 
     var today = new Date();
     today.setHours(0, 0, 0, 0);
 
     var filteredDocs = appState.documents.filter(function (doc) {
-      // 1. Search text filter
+      // 1. Text search
       var matchSearch = !searchVal ||
         (doc['Document Name'] && doc['Document Name'].toLowerCase().includes(searchVal)) ||
         (doc['Document Number'] && doc['Document Number'].toLowerCase().includes(searchVal)) ||
         (doc.Description && doc.Description.toLowerCase().includes(searchVal));
 
-      // 2. Status filter (handle dynamic overdue)
+      // 2. Status filter (with dynamic overdue)
       var deadlineDate = doc.Deadline ? new Date(doc.Deadline) : null;
       if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
       var isOverdue = deadlineDate && deadlineDate < today && doc.Status !== 'Hoàn thành';
-
-      var docStatus = doc.Status;
-      if (isOverdue) docStatus = 'Quá hạn';
-
+      var docStatus = isOverdue ? 'Quá hạn' : doc.Status;
       var matchStatus = !statusVal || docStatus === statusVal;
 
-      // 3. Employee filter (check if employee is assigned to any of document's subtasks)
+      // 3. Employee filter
       var matchEmployee = !empVal;
       if (empVal) {
-        var tasks = appState.subTasks.filter(t => t['Document ID'] === doc.ID);
-        matchEmployee = tasks.some(t => t.Assignee === empVal);
+        matchEmployee = appState.subTasks.some(t => t['Document ID'] === doc.ID && t.Assignee === empVal);
       }
 
-      return matchSearch && matchStatus && matchEmployee;
+      // 4. Receive date range filter
+      var receiveDate = doc['Receive Date'] || '';
+      var matchReceiveFrom = !receiveFrom || receiveDate >= receiveFrom;
+      var matchReceiveTo = !receiveTo || receiveDate <= receiveTo;
+
+      // 5. Deadline range filter
+      var docDeadlineDate = doc.Deadline ? doc.Deadline.substring(0, 10) : '';
+      var matchDeadlineFrom = !deadlineFrom || docDeadlineDate >= deadlineFrom;
+      var matchDeadlineTo = !deadlineTo || docDeadlineDate <= deadlineTo;
+
+      return matchSearch && matchStatus && matchEmployee && matchReceiveFrom && matchReceiveTo && matchDeadlineFrom && matchDeadlineTo;
     });
+
+    // Update active filter indicator
+    updateActiveFilterBadge(filteredDocs.length);
 
     if (filteredDocs.length === 0) {
       tbody.innerHTML = `
-      <tr>
-        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
-          <i class="material-icons" style="font-size: 40px; display: block; margin-bottom: 8px; color: var(--primary);">folder_open</i>
-          Không tìm thấy văn bản nào phù hợp.
-        </td>
-      </tr>
-    `;
+        <tr>
+          <td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">
+            <i class="material-icons" style="font-size:40px;display:block;margin-bottom:10px;color:var(--primary);opacity:0.5;">folder_open</i>
+            Không tìm thấy văn bản nào phù hợp với bộ lọc hiện tại.
+          </td>
+        </tr>`;
       return;
     }
 
-    var html = '';
-    filteredDocs.forEach(function (doc) {
+    tbody.innerHTML = filteredDocs.map(function (doc) {
       var rawProgress = doc.Progress;
-      var progressVal = 0;
-      if (typeof rawProgress === 'number' && rawProgress <= 1 && rawProgress > 0) {
-        progressVal = Math.round(rawProgress * 100);
-      } else {
-        progressVal = parseInt(rawProgress) || 0;
-      }
+      var progressVal = (typeof rawProgress === 'number' && rawProgress <= 1 && rawProgress > 0)
+        ? Math.round(rawProgress * 100)
+        : (parseInt(rawProgress) || 0);
 
-      // Dynamic status check for rendering badge
-      var deadlineDate = doc.Deadline ? new Date(doc.Deadline) : null;
-      if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
-      var isOverdue = deadlineDate && deadlineDate < today && doc.Status !== 'Hoàn thành';
+      // Progress fill color tier
+      var pctTier = progressVal === 0 ? 'low' : progressVal < 50 ? 'low' : progressVal < 80 ? 'mid' : progressVal < 100 ? 'high' : 'full';
 
-      var badgeClass = 'badge-new'; // Default for "Mới tạo"
-      var statusText = doc.Status;
-
-      if (isOverdue) {
-        badgeClass = 'badge-overdue';
-        statusText = 'Quá hạn';
-      } else if (doc.Status === 'Đang xử lý') {
-        badgeClass = 'badge-doing';
-      } else if (doc.Status === 'Hoàn thành') {
-        badgeClass = 'badge-done';
-      } else if (doc.Status === 'Đã phân công') {
-        badgeClass = 'badge-assigned'; // Let's define this or just use badge-new/doing color
-      }
-
-      // If badge-assigned isn't in CSS, we can just use inline styles, but let's assume we can map it to something like this:
-      // Actually, we can just let it fallback to default styling if not defined, or we can use an inline style in the badge below.
-      var inlineStyle = (doc.Status === 'Đã phân công' && !isOverdue) ? 'background-color: #8b5cf6; color: #fff;' : '';
-
-      html += `
-      <tr>
-        <td><strong>${doc['Document Number'] || '-'}</strong></td>
-        <td>
-          <div style="font-weight: 600; color: var(--text-main); max-width: 320px; word-wrap: break-word;">${doc['Document Name']}</div>
-          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${doc.Description || 'Không có mô tả'}</div>
-        </td>
-        <td>${doc['Receive Date'] || '-'}</td>
-        <td>${doc.Deadline || '-'}</td>
-        <td>
-          <div class="progress-container">
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill" style="width: ${progressVal}%;"></div>
+      return `
+        <tr>
+          <td><strong style="font-family:monospace;">${doc['Document Number'] || '-'}</strong></td>
+          <td>
+            <div style="font-weight:600;max-width:300px;word-wrap:break-word;">${doc['Document Name']}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              ${doc.Description || '<span style="font-style:italic;">Không có mô tả</span>'}
             </div>
-            <span class="progress-text">${progressVal}%</span>
-          </div>
-        </td>
-        <td><span class="badge ${badgeClass}" style="${inlineStyle}">${statusText}</span></td>
-        <td>
-          <div class="actions-cell">
-            <button class="btn btn-secondary btn-icon-only btn-sm" onclick="viewDocumentDetails('${doc.ID}')" title="Chi tiết & Phân việc">
-              <i class="material-icons">assignment</i>
-            </button>
-            <button class="btn btn-secondary btn-icon-only btn-sm" onclick="openEditDocumentModal('${doc.ID}')" title="Sửa">
-              <i class="material-icons">edit</i>
-            </button>
-            <button class="btn btn-danger btn-icon-only btn-sm" onclick="deleteDocument('${doc.ID}')" title="Xóa">
-              <i class="material-icons">delete</i>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-    });
-    tbody.innerHTML = html;
+          </td>
+          <td style="white-space:nowrap;color:var(--text-muted);font-size:13px;">${doc['Receive Date'] || '-'}</td>
+          <td style="white-space:nowrap;font-size:13px;">${doc.Deadline ? doc.Deadline.replace('T', ' ') : '-'}</td>
+          <td>
+            <div class="progress-container">
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" data-pct="${pctTier}" style="width:${progressVal}%;"></div>
+              </div>
+              <span class="progress-text" style="${progressVal === 100 ? 'color:#10b981;' : ''}">${progressVal}%</span>
+            </div>
+          </td>
+          <td>${getStatusBadge(doc.Status)}</td>
+          <td>
+            <div class="actions-cell">
+              <button class="btn btn-secondary btn-icon-only btn-sm" onclick="viewDocumentDetails('${doc.ID}')" title="Chi tiết & Phân việc">
+                <i class="material-icons">assignment</i>
+              </button>
+              <button class="btn btn-secondary btn-icon-only btn-sm" onclick="openEditDocumentModal('${doc.ID}')" title="Sửa">
+                <i class="material-icons">edit</i>
+              </button>
+              <button class="btn btn-danger btn-icon-only btn-sm" onclick="deleteDocument('${doc.ID}')" title="Xóa">
+                <i class="material-icons">delete</i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
   }
 
-  // --- PROGRESS BY EMPLOYEE RENDERER ---
+  // ─── STATUS HELPERS ──────────────────────────────────
+
+  function getStatusBadge(status) {
+    var cls = 'badge-new';
+    if (status === 'Đang xử lý') cls = 'badge-doing';
+    if (status === 'Đã phân công') cls = 'badge-assigned';
+    if (status === 'Hoàn thành') cls = 'badge-done';
+    if (status === 'Quá hạn') cls = 'badge-overdue';
+    if (status === 'Mới tạo') cls = 'badge-new';
+    return `<span class="badge ${cls}">${status || 'Mới tạo'}</span>`;
+  }
+
+  function updateDocumentStatus(docId) {
+    var subtasks = appState.subTasks.filter(function (st) { return st.docId === docId || st['Document ID'] === docId; });
+    var doc = appState.documents.find(function (d) { return d.ID === docId; });
+    if (!doc) return;
+
+    if (subtasks.length === 0) {
+      doc.Status = 'Mới tạo';
+      doc.Progress = 0;
+      return;
+    }
+
+    var doneTasks = subtasks.filter(function (st) { return st.status === 'Done' || st.Status === 'Done'; }).length;
+    doc.Progress = Math.round((doneTasks / subtasks.length) * 100);
+
+    if (doneTasks === subtasks.length) {
+      doc.Status = 'Hoàn thành';
+    } else if (doneTasks > 0) {
+      doc.Status = 'Đang xử lý';
+    } else {
+      doc.Status = 'Đã phân công';
+    }
+  }
+
+  // ─── FILTER UTILITIES ────────────────────────────────
+
+  function updateActiveFilterBadge(resultCount) {
+    var searchVal = document.getElementById('search-document-input').value.trim();
+    var statusVal = document.getElementById('filter-status').value;
+    var empVal = document.getElementById('filter-employee').value;
+    var receiveFrom = document.getElementById('filter-receive-from').value;
+    var receiveTo = document.getElementById('filter-receive-to').value;
+    var deadlineFrom = document.getElementById('filter-deadline-from').value;
+    var deadlineTo = document.getElementById('filter-deadline-to').value;
+
+    var activeCount = [searchVal, statusVal, empVal, receiveFrom, receiveTo, deadlineFrom, deadlineTo]
+      .filter(Boolean).length;
+
+    var bar = document.getElementById('active-filter-bar');
+    var badge = document.getElementById('filter-count-badge');
+    var resultLabel = document.getElementById('result-count-label');
+    var clearBtn = document.getElementById('btn-clear-doc-filters');
+
+    if (activeCount > 0) {
+      bar.style.display = 'flex';
+      clearBtn.style.display = 'inline-flex';
+      badge.textContent = activeCount;
+      resultLabel.textContent = 'Hiển thị ' + resultCount + ' / ' + appState.documents.length + ' văn bản';
+    } else {
+      bar.style.display = 'none';
+      clearBtn.style.display = 'none';
+    }
+  }
+
+  function clearAllDocFilters() {
+    document.getElementById('search-document-input').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-employee').value = '';
+    document.getElementById('filter-receive-from').value = '';
+    document.getElementById('filter-receive-to').value = '';
+    document.getElementById('filter-deadline-from').value = '';
+    document.getElementById('filter-deadline-to').value = '';
+    renderDocumentsTable();
+  }
+
+  function clearAllTrackingFilters() {
+    document.getElementById('tracking-filter-employee').value = '';
+    document.getElementById('tracking-filter-status').value = '';
+    document.getElementById('tracking-filter-deadline-from').value = '';
+    document.getElementById('tracking-filter-deadline-to').value = '';
+    renderProgressByEmployee();
+  }
+
+  // ─── TRACKING / PROGRESS RENDERER ───────────────────
 
   function renderProgressByEmployee() {
     var container = document.getElementById('employee-workload-container');
+    var statsBar = document.getElementById('tracking-stats-bar');
     var filterEmp = document.getElementById('tracking-filter-employee').value;
+    var filterStatus = document.getElementById('tracking-filter-status').value;
+    var filterDeadlineFrom = document.getElementById('tracking-filter-deadline-from').value;
+    var filterDeadlineTo = document.getElementById('tracking-filter-deadline-to').value;
+
+    var clearBtn = document.getElementById('btn-clear-tracking-filters');
+    if (clearBtn) {
+      if (filterEmp || filterStatus || filterDeadlineFrom || filterDeadlineTo) {
+        clearBtn.style.display = 'inline-flex';
+      } else {
+        clearBtn.style.display = 'none';
+      }
+    }
 
     var today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -526,195 +513,285 @@
       filteredEmployees = appState.employees.filter(e => e.Name === filterEmp);
     }
 
+    // Compute global stats for the stats chips
+    var allTasks = appState.subTasks;
+    var totalTasks = allTasks.length;
+    var doneTasks = allTasks.filter(t => t.Status === 'Done').length;
+    var doingTasks = allTasks.filter(t => t.Status === 'Doing').length;
+    var overdueTasks = allTasks.filter(t => {
+      if (t.Status === 'Done' || !t.Deadline) return false;
+      var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+      return d < today;
+    }).length;
+    var todoTasks = allTasks.filter(t => t.Status === 'Todo').length;
+
+    if (statsBar) {
+      statsBar.innerHTML = `
+        <div class="tracking-stat-chip chip-total">
+          <span class="chip-dot"></span>
+          <span class="chip-label">Tổng việc:</span>
+          <span class="chip-value">${totalTasks}</span>
+        </div>
+        <div class="tracking-stat-chip chip-done">
+          <span class="chip-dot"></span>
+          <span class="chip-label">Đã xong:</span>
+          <span class="chip-value">${doneTasks}</span>
+        </div>
+        <div class="tracking-stat-chip chip-doing">
+          <span class="chip-dot"></span>
+          <span class="chip-label">Đang làm:</span>
+          <span class="chip-value">${doingTasks}</span>
+        </div>
+        <div class="tracking-stat-chip chip-todo">
+          <span class="chip-dot"></span>
+          <span class="chip-label">Cần làm:</span>
+          <span class="chip-value">${todoTasks}</span>
+        </div>
+        <div class="tracking-stat-chip chip-overdue">
+          <span class="chip-dot"></span>
+          <span class="chip-label">Quá hạn:</span>
+          <span class="chip-value">${overdueTasks}</span>
+        </div>
+      `;
+    }
+
     if (filteredEmployees.length === 0) {
-      container.innerHTML = `
-      <div class="empty-state" style="grid-column: 1 / -1;">
-        <i class="material-icons">people_outline</i>
-        <p>Danh sách nhân sự trống. Vui lòng thêm nhân viên trước.</p>
-      </div>
-    `;
+      container.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="material-icons">people_outline</i><p>Chưa có nhân viên nào. Vui lòng thêm nhân viên trước.</p></div>`;
       return;
     }
 
-    var html = '';
-    filteredEmployees.forEach(function (emp) {
+    container.innerHTML = filteredEmployees.map(function (emp) {
       var tasks = appState.subTasks.filter(t => t.Assignee === emp.Name);
-      var doneTasks = tasks.filter(t => t.Status === 'Done').length;
-      var totalTasks = tasks.length;
 
-      html += `
-      <div class="workload-card">
-        <div class="workload-header">
-          <div>
-            <h3>${emp.Name}</h3>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${emp.Department}</div>
-          </div>
-          <span>${doneTasks}/${totalTasks} Việc</span>
-        </div>
-        <div class="workload-list">
-    `;
+      // Apply task status filter
+      var displayTasks = tasks;
+      if (filterStatus) {
+        if (filterStatus === 'Overdue') {
+          displayTasks = tasks.filter(t => {
+            if (t.Status === 'Done' || !t.Deadline) return false;
+            var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+            return d < today;
+          });
+        } else {
+          displayTasks = tasks.filter(t => t.Status === filterStatus);
+        }
+      }
 
-      if (tasks.length === 0) {
-        html += `
-        <div class="empty-state" style="padding: 20px;">
-          <i class="material-icons" style="font-size: 32px;">check_circle</i>
-          <p style="font-size: 13px;">Chưa giao việc nào!</p>
-        </div>
-      `;
-      } else {
-        tasks.forEach(function (t) {
+      if (filterDeadlineFrom) {
+        displayTasks = displayTasks.filter(t => t.Deadline && t.Deadline.substring(0, 10) >= filterDeadlineFrom);
+      }
+      if (filterDeadlineTo) {
+        displayTasks = displayTasks.filter(t => t.Deadline && t.Deadline.substring(0, 10) <= filterDeadlineTo);
+      }
+
+      var totalCount = tasks.length;
+      var doneCount = tasks.filter(t => t.Status === 'Done').length;
+      var pct = totalCount === 0 ? 0 : Math.round(doneCount / totalCount * 100);
+
+      // Group display tasks by status priority: Overdue > Doing > Todo > Done
+      var groupOverdue = displayTasks.filter(t => {
+        if (t.Status === 'Done' || !t.Deadline) return false;
+        var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+        return d < today;
+      });
+      var groupDoing = displayTasks.filter(t => {
+        if (t.Status !== 'Doing') return false;
+        if (!t.Deadline) return true;
+        var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+        return d >= today;
+      });
+      var groupTodo = displayTasks.filter(t => {
+        if (t.Status !== 'Todo') return false;
+        if (!t.Deadline) return true;
+        var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+        return d >= today;
+      });
+      var groupDone = displayTasks.filter(t => t.Status === 'Done');
+
+      function renderTaskGroup(groupTasks, groupKey, groupLabel) {
+        if (groupTasks.length === 0) return '';
+        var colorClass = { done: 'group-done', doing: 'group-doing', todo: 'group-todo', overdue: 'group-overdue' }[groupKey] || 'group-todo';
+        var items = groupTasks.map(function (t) {
           var parentDoc = appState.documents.find(d => d.ID === t['Document ID']);
           var docName = parentDoc ? parentDoc['Document Name'] : 'Văn bản';
           var docNum = parentDoc ? parentDoc['Document Number'] : '';
-
-          var taskDeadline = new Date(t.Deadline);
-          taskDeadline.setHours(0, 0, 0, 0);
-          var isOverdue = taskDeadline < today && t.Status !== 'Done';
-
+          var isOver = groupKey === 'overdue';
+          var taskClass = { done: 'task-done', doing: 'task-doing', todo: 'task-todo', overdue: 'task-overdue' }[groupKey] || 'task-todo';
           var statusBadge = '';
-          if (t.Status === 'Done') {
-            statusBadge = '<span class="badge badge-done" style="font-size: 9px; padding: 2px 6px;">Done</span>';
-          } else if (isOverdue) {
-            statusBadge = '<span class="badge badge-overdue" style="font-size: 9px; padding: 2px 6px;">Overdue</span>';
-          } else if (t.Status === 'Doing') {
-            statusBadge = '<span class="badge badge-doing" style="font-size: 9px; padding: 2px 6px;">Doing</span>';
-          } else {
-            statusBadge = '<span class="badge badge-new" style="font-size: 9px; padding: 2px 6px;">Todo</span>';
-          }
+          if (groupKey === 'done') statusBadge = '<span class="badge badge-done" style="font-size:9px;padding:2px 6px;">Xong</span>';
+          else if (groupKey === 'overdue') statusBadge = '<span class="badge badge-overdue" style="font-size:9px;padding:2px 6px;">Quá hạn</span>';
+          else if (groupKey === 'doing') statusBadge = '<span class="badge badge-doing" style="font-size:9px;padding:2px 6px;">Đang làm</span>';
+          else statusBadge = '<span class="badge badge-new" style="font-size:9px;padding:2px 6px;color:#64748b;background:#f1f5f9;border-color:#e2e8f0;">Cần làm</span>';
 
-          // Thêm logic style background cho task
-          var cardStyle = '';
-          if (t.Status === 'Done') {
-            cardStyle = 'background-color: #f0fdf4; border: 1px solid #bbf7d0; box-shadow: none;';
-          } else if (isOverdue) {
-            cardStyle = 'background-color: #fef2f2; border: 1px solid #fecaca;';
-          }
-
-          html += `
-          <div class="workload-task" style="${cardStyle}">
-            <div class="workload-task-title" style="${t.Status === 'Done' ? 'text-decoration: line-through; opacity: 0.6; color: #166534;' : ''}">${t.Title}</div>
-            <div class="workload-task-doc" title="${docName}" style="${t.Status === 'Done' ? 'opacity: 0.7;' : ''}">
-              <i class="material-icons" style="font-size: 13px;">description</i>
-              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px;">
-                VB: <strong>${docNum}</strong> - ${docName}
-              </span>
-            </div>
-            <div class="workload-task-footer">
-              <div class="workload-task-deadline" style="${t.Status === 'Done' ? 'opacity: 0.7;' : (isOverdue ? 'color: #dc2626; font-weight: 600;' : '')}">
-                <i class="material-icons" style="font-size: 13px;">event</i> Hạn: ${t.Deadline}
+          return `
+            <div class="workload-task ${taskClass}">
+              <div class="workload-task-title ${groupKey === 'done' ? 'is-done' : ''}">
+                ${groupKey === 'done' ? '<i class="material-icons task-done-icon">check_circle</i>' : ''}
+                ${t.Title}
               </div>
-              ${statusBadge}
-            </div>
+              <div class="workload-task-doc" title="${docName}">
+                <i class="material-icons" style="font-size:12px;">description</i>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px;">
+                  <strong>${docNum}</strong> — ${docName}
+                </span>
+              </div>
+              <div class="workload-task-footer">
+                <div class="workload-task-deadline ${isOver ? 'is-overdue' : ''}">
+                  <i class="material-icons" style="font-size:12px;">event</i> ${t.Deadline || 'N/A'}
+                </div>
+                ${statusBadge}
+              </div>
+            </div>`;
+        }).join('');
+
+        return `
+          <div class="workload-group-header">
+            <span class="workload-group-label ${colorClass}">${groupLabel}</span>
+            <div class="workload-group-line"></div>
+            <span class="workload-group-count ${colorClass}">${groupTasks.length}</span>
           </div>
-        `;
-        });
+          ${items}`;
       }
 
-      html += `
-        </div>
-      </div>
-    `;
-    });
+      var tasksHtml = '';
+      if (displayTasks.length === 0) {
+        tasksHtml = `<div class="empty-state" style="padding:20px;"><i class="material-icons" style="font-size:30px;">inbox</i><p style="font-size:12px;">Không có việc nào phù hợp.</p></div>`;
+      } else {
+        tasksHtml += renderTaskGroup(groupOverdue, 'overdue', '🔴 Quá hạn');
+        tasksHtml += renderTaskGroup(groupDoing, 'doing', '🟡 Đang thực hiện');
+        tasksHtml += renderTaskGroup(groupTodo, 'todo', '⚪ Cần làm');
+        tasksHtml += renderTaskGroup(groupDone, 'done', '✅ Hoàn thành');
+      }
 
-    container.innerHTML = html;
+      return `
+        <div class="workload-card">
+          <div class="workload-header">
+            <div class="workload-header-top">
+              <div>
+                <h3>${emp.Name}</h3>
+                <div class="workload-header-dept">${emp.Department}</div>
+              </div>
+              <span class="workload-task-count">
+                <i class="material-icons" style="font-size:13px;">task_alt</i>
+                ${doneCount}/${totalCount}
+              </span>
+            </div>
+            <div class="workload-mini-progress">
+              <div class="workload-mini-bar-bg">
+                <div class="workload-mini-bar-fill" style="width:${pct}%;${pct < 50 ? 'background:linear-gradient(90deg,#f87171,#ef4444);' : pct < 80 ? 'background:linear-gradient(90deg,#f59e0b,#fb923c);' : 'background:linear-gradient(90deg,#34d399,#10b981);'}"></div>
+              </div>
+              <span class="workload-mini-pct">${pct}%</span>
+            </div>
+          </div>
+          <div class="workload-list">${tasksHtml}</div>
+        </div>`;
+    }).join('');
   }
 
-  // --- EMPLOYEES RENDERER ---
+  // ─── EMPLOYEES RENDERER ──────────────────────────────
 
   function renderEmployeesTable() {
-    console.log("renderEmployeesTable, appStates: ", appState.employees);
     var tbody = document.getElementById('employees-table-body');
     if (appState.employees.length === 0) {
-      tbody.innerHTML = `
-      <tr>
-        <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
-          Chưa có nhân viên nào trong danh sách.
-        </td>
-      </tr>
-    `;
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);">Chưa có nhân viên nào trong danh sách.</td></tr>`;
       return;
     }
-
-    var html = '';
-    appState.employees.forEach(function (emp, index) {
-      html += `
-      <tr>
-        <td><strong>${emp.ID || ('EMP-' + index)}</strong></td>
-        <td>${emp.Name}</td>
-        <td>${emp.Department}</td>
-        <td>
-          <div class="actions-cell">
-            <button class="btn btn-secondary btn-icon-only btn-sm" onclick="openEditEmployeeModal('${emp.ID}')">
-              <i class="material-icons">edit</i>
-            </button>
-            <button class="btn btn-danger btn-icon-only btn-sm" onclick="deleteEmployee('${emp.ID}')">
-              <i class="material-icons">delete</i>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-    });
-    tbody.innerHTML = html;
+    tbody.innerHTML = appState.employees.map(function (emp, index) {
+      return `
+        <tr>
+          <td><span class="badge" style="background-color: #f1f5f9; color: #475569;">${emp.ID || ('EMP-' + (index + 1))}</span></td>
+          <td><strong>${emp.Name}</strong></td>
+          <td>${emp.Department}</td>
+          <td style="text-align: right;">
+            <div class="actions-cell" style="justify-content: flex-end;">
+              <button class="btn btn-secondary btn-icon-only btn-sm" onclick="openEditEmployeeModal('${emp.ID}')" title="Sửa">
+                <i class="material-icons">edit</i>
+              </button>
+              <button class="btn btn-danger btn-icon-only btn-sm" onclick="deleteEmployee('${emp.ID}')" title="Xóa">
+                <i class="material-icons">delete</i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
   }
 
-  // --- SETTINGS RENDERER ---
+  // ─── SETTINGS RENDERER ───────────────────────────────
 
   function renderSettingsForm() {
-    var settings = appState.settings;
-    document.getElementById('setting-email-enabled').checked = settings.emailEnabled !== false;
-    document.getElementById('setting-reminder-hour').value = settings.reminderHour !== undefined ? settings.reminderHour : 8;
-    document.getElementById('setting-warning-days').value = settings.warningDays !== undefined ? settings.warningDays : 3;
+    var s = appState.settings || {};
+
+    var emailVal = s.emailEnabled;
+    if (typeof emailVal === 'string') emailVal = emailVal.toLowerCase().trim();
+    var emailEl = document.getElementById('setting-email-enabled');
+    if (emailEl) emailEl.checked = (emailVal === true || emailVal === 1 || emailVal === 'true');
+
+    var calVal = s.calendarEnabled;
+    if (typeof calVal === 'string') calVal = calVal.toLowerCase().trim();
+    var calEl = document.getElementById('setting-calendar-enabled');
+    if (calEl) calEl.checked = (calVal === true || calVal === 1 || calVal === 'true');
+
+    var calRemEl = document.getElementById('setting-calendar-reminder-minutes');
+    if (calRemEl) calRemEl.value = s.calendarReminderMinutes !== undefined ? s.calendarReminderMinutes : 60;
+
+    var recipEl = document.getElementById('setting-email-recipient');
+    if (recipEl) recipEl.value = s.emailRecipient || '';
+
+    var timeEl = document.getElementById('setting-reminder-time');
+    if (timeEl) timeEl.value = s.reminderTime || '08:00';
+
+    var warnEl = document.getElementById('setting-warning-days');
+    if (warnEl) warnEl.value = s.warningDays !== undefined ? s.warningDays : 3;
   }
 
-  // --- EVENT LISTENERS & CRUD BINDINGS ---
+  // ─── EVENT LISTENERS ─────────────────────────────────
 
   function setupEventListeners() {
-    // Search and status filter events
+    // Document search & filters
     document.getElementById('search-document-input').addEventListener('input', renderDocumentsTable);
     document.getElementById('filter-status').addEventListener('change', renderDocumentsTable);
     document.getElementById('filter-employee').addEventListener('change', renderDocumentsTable);
+    document.getElementById('filter-receive-from').addEventListener('change', renderDocumentsTable);
+    document.getElementById('filter-receive-to').addEventListener('change', renderDocumentsTable);
+    document.getElementById('filter-deadline-from').addEventListener('change', renderDocumentsTable);
+    document.getElementById('filter-deadline-to').addEventListener('change', renderDocumentsTable);
+    document.getElementById('btn-clear-doc-filters').addEventListener('click', clearAllDocFilters);
 
-    // Tracking filter events
+    // Tracking filters
     document.getElementById('tracking-filter-employee').addEventListener('change', renderProgressByEmployee);
+    document.getElementById('tracking-filter-status').addEventListener('change', renderProgressByEmployee);
+    document.getElementById('tracking-filter-deadline-from').addEventListener('change', renderProgressByEmployee);
+    document.getElementById('tracking-filter-deadline-to').addEventListener('change', renderProgressByEmployee);
+    document.getElementById('btn-clear-tracking-filters').addEventListener('click', clearAllTrackingFilters);
 
-    // Document Modals Triggers
-    document.getElementById('btn-add-document').addEventListener('click', function () {
-      openAddDocumentModal();
-    });
-    document.getElementById('btn-submit-document').addEventListener('click', function () {
-      submitDocumentForm();
-    });
+    // Document modal triggers
+    document.getElementById('btn-add-document').addEventListener('click', openAddDocumentModal);
+    document.getElementById('btn-submit-document').addEventListener('click', submitDocumentForm);
 
-    // Inline SubTask Form Event Listeners
-    document.getElementById('btn-add-subtask-toggle').addEventListener('click', function () {
-      toggleInlineSubTaskForm();
-    });
-    document.getElementById('btn-cancel-inline-subtask').addEventListener('click', function () {
-      hideInlineSubTaskForm();
-    });
-    document.getElementById('btn-submit-inline-subtask').addEventListener('click', function () {
-      submitInlineSubTaskForm();
-    });
+    // Inline SubTask form
+    document.getElementById('btn-add-subtask-toggle').addEventListener('click', toggleInlineSubTaskForm);
+    document.getElementById('btn-cancel-inline-subtask').addEventListener('click', hideInlineSubTaskForm);
+    document.getElementById('btn-submit-inline-subtask').addEventListener('click', submitInlineSubTaskForm);
 
-    // Employee Modals Triggers
-    document.getElementById('btn-add-employee').addEventListener('click', function () {
-      openAddEmployeeModal();
-    });
-    document.getElementById('btn-submit-employee').addEventListener('click', function () {
-      submitEmployeeForm();
-    });
+    // Employee modal triggers
+    document.getElementById('btn-add-employee').addEventListener('click', openAddEmployeeModal);
+    document.getElementById('btn-submit-employee').addEventListener('click', submitEmployeeForm);
 
-    // Settings Triggers
-    document.getElementById('btn-save-settings').addEventListener('click', function () {
-      saveSettings();
-    });
-    document.getElementById('btn-test-email').addEventListener('click', function () {
-      sendTestEmail();
+    // Settings
+    document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+    document.getElementById('btn-test-email').addEventListener('click', sendTestEmail);
+
+    // Close modals on backdrop click
+    document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop) {
+          backdrop.classList.remove('show');
+        }
+      });
     });
   }
 
-  // --- MODAL UTILS ---
+  // ─── MODAL UTILS ─────────────────────────────────────
 
   function openModal(modalId) {
     document.getElementById(modalId).classList.add('show');
@@ -724,41 +801,32 @@
     document.getElementById(modalId).classList.remove('show');
   }
 
-  // --- DOCUMENTS OPERATIONS ---
+  // ─── DOCUMENTS OPERATIONS ────────────────────────────
 
   function openAddDocumentModal() {
     document.getElementById('document-modal-title').textContent = 'Thêm Văn Bản Mới';
     document.getElementById('document-form').reset();
     document.getElementById('doc-id').value = '';
-
-    // Set default receive date to today
-    var todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('doc-receive-date').value = todayStr;
-
+    document.getElementById('doc-receive-date').value = new Date().toISOString().split('T')[0];
     openModal('document-modal');
   }
 
   function openEditDocumentModal(docId) {
     var doc = appState.documents.find(d => d.ID === docId);
     if (!doc) return;
-
     document.getElementById('document-modal-title').textContent = 'Sửa Văn Bản';
     document.getElementById('doc-id').value = doc.ID;
     document.getElementById('doc-number').value = doc['Document Number'];
     document.getElementById('doc-name').value = doc['Document Name'];
     document.getElementById('doc-receive-date').value = doc['Receive Date'];
-    document.getElementById('doc-deadline').value = doc.Deadline;
+    document.getElementById('doc-deadline').value = doc.Deadline ? doc.Deadline.replace(' ', 'T') : '';
     document.getElementById('doc-description').value = doc.Description || '';
-
     openModal('document-modal');
   }
 
   function submitDocumentForm() {
     var form = document.getElementById('document-form');
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
+    if (!form.checkValidity()) { form.reportValidity(); return; }
 
     var docId = document.getElementById('doc-id').value;
     var docData = {
@@ -774,9 +842,9 @@
     setBtnLoading(saveBtn, true);
     closeModal('document-modal');
 
+    var tempDoc = null;
     if (!docId) {
-      // Optimistic add
-      var tempDoc = {
+      tempDoc = {
         ID: '__tmp_doc_' + Date.now(),
         'Document Number': docData.docNumber,
         'Document Name': docData.docName,
@@ -787,10 +855,7 @@
         Progress: 0
       };
       appState.documents.unshift(tempDoc);
-      renderDocumentsTable();
-      renderDashboard();
     } else {
-      // Optimistic edit
       var existing = appState.documents.find(d => d.ID === docId);
       if (existing) {
         existing['Document Number'] = docData.docNumber;
@@ -799,238 +864,238 @@
         existing.Deadline = docData.deadline;
         existing.Description = docData.description;
       }
-      renderDocumentsTable();
-      renderDashboard();
     }
+    renderDocumentsTable();
+    renderDashboard();
 
     var isNew = !docId;
     var callback = function (data) {
-      appState = data;
-      renderAll();
-      setBtnLoading(saveBtn, false);
-      showToast(isNew ? 'Thêm văn bản mới thành công' : 'Cập nhật văn bản thành công');
+      try {
+        appState = data;
+        renderAll();
+        showToast(isNew ? 'Thêm văn bản mới thành công' : 'Cập nhật văn bản thành công');
+      } catch (e) {
+        console.error('Callback render error: ' + e.message);
+      } finally {
+        setBtnLoading(saveBtn, false);
+      }
     };
 
-    if (docId) {
-      google.script.run
-        .withSuccessHandler(callback)
-        .withFailureHandler(function (err) {
-          // Revert: reload from server
-          google.script.run.withSuccessHandler(function (d) { appState = d; renderAll(); }).getInitialData();
-          setBtnLoading(saveBtn, false);
-          showToast('Lỗi lưu văn bản: ' + err.message, 'error');
-        })
-        .updateDocument(docData);
-    } else {
-      google.script.run
-        .withSuccessHandler(callback)
-        .withFailureHandler(function (err) {
-          appState.documents = appState.documents.filter(d => d.ID !== tempDoc.ID);
-          renderDocumentsTable();
-          renderDashboard();
-          setBtnLoading(saveBtn, false);
-          showToast('Lỗi thêm văn bản: ' + err.message, 'error');
-        })
-        .addDocument(docData);
-    }
+    var method = docId ? 'updateDocument' : 'addDocument';
+    google.script.run
+      .withSuccessHandler(callback)
+      .withFailureHandler(function (err) {
+        if (!docId && tempDoc) appState.documents = appState.documents.filter(d => d.ID !== tempDoc.ID);
+        renderDocumentsTable(); renderDashboard();
+        setBtnLoading(saveBtn, false);
+        showToast('Lỗi: ' + err.message, 'error');
+      })
+    [method](docData);
   }
 
   function deleteDocument(docId) {
     var doc = appState.documents.find(d => d.ID === docId);
-    var docName = doc ? doc['Document Name'] : 'văn bản này';
+    if (!confirm(`Xóa văn bản "${doc ? doc['Document Name'] : docId}"?\nViệc này cũng sẽ xóa tất cả công việc con liên quan.`)) return;
 
-    if (confirm(`Bạn có chắc chắn muốn xóa văn bản "${docName}"?\nViệc này cũng sẽ xóa tất cả công việc con liên quan.`)) {
-      // Optimistic delete
-      var removedDoc = appState.documents.find(d => d.ID === docId);
-      var removedTasks = appState.subTasks.filter(t => t['Document ID'] === docId);
-      appState.documents = appState.documents.filter(d => d.ID !== docId);
-      appState.subTasks = appState.subTasks.filter(t => t['Document ID'] !== docId);
-      renderDocumentsTable();
-      renderDashboard();
+    var removedDoc = doc;
+    var removedTasks = appState.subTasks.filter(t => t['Document ID'] === docId);
+    appState.documents = appState.documents.filter(d => d.ID !== docId);
+    appState.subTasks = appState.subTasks.filter(t => t['Document ID'] !== docId);
+    renderDocumentsTable(); renderDashboard();
 
-      google.script.run
-        .withSuccessHandler(function (data) {
-          appState = data;
-          renderAll();
-          showToast('Đã xóa văn bản và các công việc liên quan');
-        })
-        .withFailureHandler(function (err) {
-          // Revert
-          if (removedDoc) appState.documents.push(removedDoc);
-          removedTasks.forEach(t => appState.subTasks.push(t));
-          renderDocumentsTable();
-          renderDashboard();
-          showToast('Lỗi xóa văn bản: ' + err.message, 'error');
-        })
-        .deleteDocument(docId);
-    }
+    google.script.run
+      .withSuccessHandler(function (data) { appState = data; renderAll(); showToast('Đã xóa văn bản'); })
+      .withFailureHandler(function (err) {
+        if (removedDoc) appState.documents.push(removedDoc);
+        removedTasks.forEach(t => appState.subTasks.push(t));
+        renderDocumentsTable(); renderDashboard();
+        showToast('Lỗi xóa văn bản: ' + err.message, 'error');
+      })
+      .deleteDocument(docId);
   }
 
-  // --- DOCUMENT DETAILS & SUBTASK OPERATIONS ---
+  // ─── DOCUMENT DETAILS & SUBTASK OPERATIONS ───────────
 
   function viewDocumentDetails(docId) {
     var doc = appState.documents.find(d => d.ID === docId);
     if (!doc) return;
-
     currentDocIdForTasks = docId;
-
-    // Reset/hide inline subtask form
     hideInlineSubTaskForm();
 
-    // Set meta details
     document.getElementById('detail-doc-name').textContent = doc['Document Name'];
     document.getElementById('detail-doc-number').textContent = doc['Document Number'] || '-';
     document.getElementById('detail-doc-receive-date').textContent = doc['Receive Date'] || '-';
-    document.getElementById('detail-doc-deadline').textContent = doc.Deadline || '-';
+    document.getElementById('detail-doc-deadline').textContent = doc.Deadline ? doc.Deadline.replace('T', ' ') : '-';
     document.getElementById('detail-doc-description').textContent = doc.Description || 'Không có chỉ đạo cụ thể.';
 
-    // Dynamic status badge
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
     var deadlineDate = doc.Deadline ? new Date(doc.Deadline) : null;
     if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
     var isOverdue = deadlineDate && deadlineDate < today && doc.Status !== 'Hoàn thành';
 
     var statusBadge = document.getElementById('detail-doc-status-badge');
     statusBadge.className = 'badge';
-    if (isOverdue) {
-      statusBadge.classList.add('badge-overdue');
-      statusBadge.textContent = 'Quá hạn';
-    } else if (doc.Status === 'Đang xử lý') {
-      statusBadge.classList.add('badge-doing');
-      statusBadge.textContent = 'Đang xử lý';
-    } else if (doc.Status === 'Hoàn thành') {
-      statusBadge.classList.add('badge-done');
-      statusBadge.textContent = 'Hoàn thành';
-    } else {
-      statusBadge.classList.add('badge-new');
-      statusBadge.textContent = 'Mới tạo';
-    }
+    if (isOverdue) { statusBadge.classList.add('badge-overdue'); statusBadge.textContent = 'Quá hạn'; }
+    else if (doc.Status === 'Đang xử lý') { statusBadge.classList.add('badge-doing'); statusBadge.textContent = 'Đang xử lý'; }
+    else if (doc.Status === 'Đã phân công') { statusBadge.classList.add('badge-assigned'); statusBadge.textContent = 'Đã phân công'; }
+    else if (doc.Status === 'Hoàn thành') { statusBadge.classList.add('badge-done'); statusBadge.textContent = 'Hoàn thành'; }
+    else { statusBadge.classList.add('badge-new'); statusBadge.textContent = doc.Status || 'Mới tạo'; }
 
-    // Progress bar
-    var progressVal = parseInt(doc.Progress) || 0;
-    document.getElementById('detail-progress-bar-fill').style.width = progressVal + '%';
-    document.getElementById('detail-progress-text').textContent = progressVal + '%';
-
-    // Populate tasks
+    refreshDetailProgressBar();
     renderSubTasksList(docId);
-
     openModal('document-detail-modal');
   }
 
+  // Grouped subtask renderer
   function renderSubTasksList(docId) {
     var listContainer = document.getElementById('detail-subtasks-list');
     var tasks = appState.subTasks.filter(t => t['Document ID'] === docId);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
 
     if (tasks.length === 0) {
-      listContainer.innerHTML = `
-      <div class="empty-state" style="padding: 20px;">
-        <i class="material-icons" style="font-size: 32px;">format_list_bulleted</i>
-        <p style="font-size: 13px;">Chưa có công việc con nào được tạo.</p>
-      </div>
-    `;
+      listContainer.innerHTML = `<div class="empty-state" style="padding:24px;"><i class="material-icons" style="font-size:32px;">format_list_bulleted</i><p style="font-size:13px;">Chưa có công việc con nào. Nhấn "Thêm việc" để bắt đầu phân công.</p></div>`;
       return;
     }
 
-    var html = '';
-    tasks.forEach(function (t) {
-      var isDone = t.Status === 'Done';
-      var isDoing = t.Status === 'Doing';
+    // Group tasks
+    var groups = [
+      {
+        key: 'overdue', label: 'Quá hạn', colorClass: 'group-overdue',
+        items: tasks.filter(t => {
+          if (t.Status === 'Done' || !t.Deadline) return false;
+          var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+          return d < today;
+        })
+      },
+      {
+        key: 'doing', label: 'Đang thực hiện', colorClass: 'group-doing',
+        items: tasks.filter(t => {
+          if (t.Status !== 'Doing' || !t.Deadline) return t.Status === 'Doing';
+          var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+          return d >= today;
+        })
+      },
+      {
+        key: 'todo', label: 'Cần làm', colorClass: 'group-todo',
+        items: tasks.filter(t => {
+          if (t.Status !== 'Todo') return false;
+          if (!t.Deadline) return true;
+          var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
+          return d >= today;
+        })
+      },
+      {
+        key: 'done', label: 'Đã hoàn thành', colorClass: 'group-done',
+        items: tasks.filter(t => t.Status === 'Done')
+      }
+    ];
 
-      // Status cycle picker / buttons or inline actions
-      var statusSelectHtml = `
-      <select onchange="updateSubTaskStatusInline('${t.ID}', this.value)" class="form-control" style="font-size: 11px; padding: 4px 8px; min-width: 80px; width: auto; height: auto;">
-        <option value="Todo" ${t.Status === 'Todo' ? 'selected' : ''}>Cần làm</option>
-        <option value="Doing" ${t.Status === 'Doing' ? 'selected' : ''}>Đang làm</option>
-        <option value="Done" ${t.Status === 'Done' ? 'selected' : ''}>Xong</option>
-      </select>
-    `;
+    listContainer.innerHTML = groups.map(function (group) {
+      if (group.items.length === 0) return '';
 
-      html += `
-      <div class="subtask-item-card">
-        <div class="subtask-item-left">
-          <input type="checkbox" class="subtask-item-checkbox" ${isDone ? 'checked' : ''} 
-            onclick="toggleSubTaskDone('${t.ID}', this.checked)" title="Đánh dấu hoàn thành nhanh">
-          <div class="subtask-item-info">
-            <span class="subtask-item-title ${isDone ? 'done' : ''}">${t.Title}</span>
-            <span class="subtask-item-assignee">Giao cho: <strong>${t.Assignee}</strong></span>
+      var itemsHtml = group.items.map(function (t) {
+        var isDone = t.Status === 'Done';
+        var isOver = group.key === 'overdue';
+        var itemClass = { done: 'item-done', doing: 'item-doing', overdue: 'item-overdue', todo: 'item-todo' }[group.key] || 'item-todo';
+
+        var statusSelectHtml = `
+          <select onchange="updateSubTaskStatusInline('${t.ID}', this.value)" class="form-control" style="font-size:11px;padding:3px 8px;min-width:90px;width:auto;height:auto;">
+            <option value="Todo" ${t.Status === 'Todo' ? 'selected' : ''}>Cần làm</option>
+            <option value="Doing" ${t.Status === 'Doing' ? 'selected' : ''}>Đang làm</option>
+            <option value="Done" ${t.Status === 'Done' ? 'selected' : ''}>Xong</option>
+          </select>`;
+
+        return `
+          <div class="subtask-item-card ${itemClass}">
+            <div class="subtask-item-left">
+              <input type="checkbox" class="subtask-item-checkbox" ${isDone ? 'checked' : ''}
+                onclick="toggleSubTaskDone('${t.ID}', this.checked)" title="Đánh dấu hoàn thành">
+              <div class="subtask-item-info">
+                <span class="subtask-item-title ${isDone ? 'done' : ''}">${t.Title}</span>
+                <span class="subtask-item-assignee">
+                  <i class="material-icons" style="font-size:11px;vertical-align:middle;">person</i>
+                  ${t.Assignee}
+                </span>
+              </div>
+            </div>
+            <div class="subtask-item-right">
+              <span class="subtask-item-deadline ${isOver ? 'overdue' : ''}">
+                <i class="material-icons" style="font-size:12px;vertical-align:middle;">event</i>
+                ${t.Deadline}
+              </span>
+              ${statusSelectHtml}
+              <button class="btn btn-secondary btn-icon-only btn-sm" onclick="openEditSubTaskInline('${t.ID}')" title="Sửa">
+                <i class="material-icons" style="font-size:15px;">edit</i>
+              </button>
+              <button class="btn btn-danger btn-icon-only btn-sm" onclick="deleteSubTask('${t.ID}')" title="Xóa">
+                <i class="material-icons" style="font-size:15px;">delete</i>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="subtask-group">
+          <div class="subtask-group-header">
+            <span class="subtask-group-title ${group.colorClass}">${group.label}</span>
+            <div class="subtask-group-line"></div>
+            <span class="subtask-group-count ${group.colorClass}">${group.items.length}</span>
           </div>
-        </div>
-        
-        <div class="subtask-item-right">
-          <span class="subtask-item-deadline">Hạn: ${t.Deadline}</span>
-          ${statusSelectHtml}
-          <button class="btn btn-secondary btn-icon-only btn-sm" onclick="openEditSubTaskInline('${t.ID}')" title="Sửa">
-            <i class="material-icons" style="font-size: 16px;">edit</i>
-          </button>
-          <button class="btn btn-secondary btn-icon-only btn-sm" style="color: #ef4444;" onclick="deleteSubTask('${t.ID}')" title="Xóa">
-            <i class="material-icons" style="font-size: 16px;">delete</i>
-          </button>
-        </div>
-      </div>
-    `;
-    });
-    listContainer.innerHTML = html;
+          ${itemsHtml}
+        </div>`;
+    }).join('');
   }
 
-  // Helper: recalculate progress bar in detail modal from local appState (no server call)
   function refreshDetailProgressBar() {
     var tasks = appState.subTasks.filter(t => t['Document ID'] === currentDocIdForTasks);
     var total = tasks.length;
     var done = tasks.filter(t => t.Status === 'Done').length;
     var pct = total === 0 ? 0 : Math.round(done / total * 100);
-    document.getElementById('detail-progress-bar-fill').style.width = pct + '%';
+
+    var fill = document.getElementById('detail-progress-bar-fill');
+    fill.style.width = pct + '%';
+    fill.setAttribute('data-pct', pct === 0 ? 'low' : pct < 50 ? 'low' : pct < 80 ? 'mid' : pct < 100 ? 'high' : 'full');
     document.getElementById('detail-progress-text').textContent = pct + '%';
+
+    var countEl = document.getElementById('detail-task-count-text');
+    if (countEl) countEl.textContent = done + ' / ' + total + ' công việc hoàn thành';
   }
 
-  // Optimistic UI: update local state instantly, then sync to server silently
   function toggleSubTaskDone(taskId, isChecked) {
     var status = isChecked ? 'Done' : 'Todo';
-
-    // Optimistic update: change local state immediately
     var task = appState.subTasks.find(t => t.ID === taskId);
     if (task) task.Status = status;
     renderSubTasksList(currentDocIdForTasks);
     refreshDetailProgressBar();
 
-    // Sync to server silently (no spinner)
     google.script.run
       .withSuccessHandler(function (data) {
         appState = data;
-        renderDocumentsTable();
-        renderDashboard();
-        renderProgressByEmployee();
+        renderDocumentsTable(); renderDashboard(); renderProgressByEmployee();
       })
       .withFailureHandler(function (err) {
-        // Revert if failed
         if (task) task.Status = isChecked ? 'Todo' : 'Done';
-        renderSubTasksList(currentDocIdForTasks);
-        refreshDetailProgressBar();
+        renderSubTasksList(currentDocIdForTasks); refreshDetailProgressBar();
         showToast('Lỗi đồng bộ: ' + err.message, 'error');
       })
       .toggleSubTaskStatus(taskId, currentDocIdForTasks, status);
   }
 
   function updateSubTaskStatusInline(taskId, newStatus) {
-    // Optimistic update
     var task = appState.subTasks.find(t => t.ID === taskId);
     var prevStatus = task ? task.Status : null;
     if (task) task.Status = newStatus;
     renderSubTasksList(currentDocIdForTasks);
     refreshDetailProgressBar();
 
-    // Sync silently
     google.script.run
       .withSuccessHandler(function (data) {
         appState = data;
-        renderDocumentsTable();
-        renderDashboard();
-        renderProgressByEmployee();
+        renderDocumentsTable(); renderDashboard(); renderProgressByEmployee();
       })
       .withFailureHandler(function (err) {
         if (task && prevStatus) task.Status = prevStatus;
-        renderSubTasksList(currentDocIdForTasks);
-        refreshDetailProgressBar();
+        renderSubTasksList(currentDocIdForTasks); refreshDetailProgressBar();
         showToast('Lỗi đồng bộ: ' + err.message, 'error');
       })
       .toggleSubTaskStatus(taskId, currentDocIdForTasks, newStatus);
@@ -1038,7 +1103,7 @@
 
   function toggleInlineSubTaskForm() {
     var container = document.getElementById('inline-subtask-form-container');
-    if (container.style.display === 'none') {
+    if (container.style.display === 'none' || !container.style.display) {
       openAddSubTaskInline();
     } else {
       hideInlineSubTaskForm();
@@ -1054,77 +1119,76 @@
 
   function openAddSubTaskInline() {
     if (!currentDocIdForTasks) return;
-
     document.getElementById('inline-subtask-form-title').textContent = 'Thêm Công Việc Con Mới';
     document.getElementById('inline-subtask-form').reset();
     document.getElementById('inline-subtask-id').value = '';
     document.getElementById('inline-subtask-doc-id').value = currentDocIdForTasks;
     document.getElementById('inline-subtask-status-group').style.display = 'none';
 
-    // Set default deadline = doc deadline, and set max to prevent exceeding doc deadline
     var doc = appState.documents.find(d => d.ID === currentDocIdForTasks);
     var deadlineInput = document.getElementById('inline-subtask-deadline');
     if (doc && doc.Deadline) {
-      deadlineInput.value = doc.Deadline;
-      deadlineInput.max = doc.Deadline;  // Giới hạn tối đa bằng deadline văn bản
+      var val = doc.Deadline.replace(' ', 'T');
+      deadlineInput.value = val;
+      deadlineInput.max = val;
     } else {
       deadlineInput.removeAttribute('max');
     }
 
-    var container = document.getElementById('inline-subtask-form-container');
-    container.style.display = 'block';
+    document.getElementById('inline-subtask-form-container').style.display = 'block';
     document.getElementById('inline-subtask-title').focus();
   }
 
   function openEditSubTaskInline(taskId) {
     var task = appState.subTasks.find(t => t.ID === taskId);
     if (!task) return;
-
     document.getElementById('inline-subtask-form-title').textContent = 'Sửa Công Việc Con';
     document.getElementById('inline-subtask-id').value = task.ID;
     document.getElementById('inline-subtask-doc-id').value = task['Document ID'];
     document.getElementById('inline-subtask-title').value = task.Title;
 
-    // Set max deadline = parent doc deadline
     var parentDoc = appState.documents.find(d => d.ID === task['Document ID']);
     var deadlineInput = document.getElementById('inline-subtask-deadline');
-    deadlineInput.value = task.Deadline;
+    deadlineInput.value = task.Deadline ? task.Deadline.replace(' ', 'T') : '';
     if (parentDoc && parentDoc.Deadline) {
-      deadlineInput.max = parentDoc.Deadline;
+      var maxVal = parentDoc.Deadline.replace(' ', 'T');
+      deadlineInput.max = maxVal;
     } else {
       deadlineInput.removeAttribute('max');
     }
 
     document.getElementById('inline-subtask-assignee').value = task.Assignee;
-
-    var statusGroup = document.getElementById('inline-subtask-status-group');
-    statusGroup.style.display = 'block';
+    document.getElementById('inline-subtask-status-group').style.display = 'block';
     document.getElementById('inline-subtask-status').value = task.Status || 'Todo';
-
-    var container = document.getElementById('inline-subtask-form-container');
-    container.style.display = 'block';
+    document.getElementById('inline-subtask-form-container').style.display = 'block';
     document.getElementById('inline-subtask-title').focus();
   }
 
   function submitInlineSubTaskForm() {
     var form = document.getElementById('inline-subtask-form');
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
+    if (!form.checkValidity()) { form.reportValidity(); return; }
 
     var taskId = document.getElementById('inline-subtask-id').value;
     var docId = document.getElementById('inline-subtask-doc-id').value;
-
-    // Validate: deadline subtask không được vượt quá deadline văn bản cha
     var subtaskDeadline = document.getElementById('inline-subtask-deadline').value;
     var parentDoc = appState.documents.find(d => d.ID === docId);
-    if (parentDoc && parentDoc.Deadline && subtaskDeadline > parentDoc.Deadline) {
-      showToast(
-        'Deadline công việc con (' + subtaskDeadline + ') không được vượt quá deadline văn bản (' + parentDoc.Deadline + ')!',
-        'error'
-      );
-      return;
+
+    if (parentDoc && parentDoc.Deadline && subtaskDeadline) {
+      var pDeadlineStr = parentDoc.Deadline.replace(' ', 'T');
+      if (pDeadlineStr.length === 10) {
+        pDeadlineStr += 'T23:59:59';
+      }
+      var sDeadlineStr = subtaskDeadline.replace(' ', 'T');
+      if (sDeadlineStr.length === 10) {
+        sDeadlineStr += 'T23:59:59';
+      }
+      var parentDeadlineTime = new Date(pDeadlineStr).getTime();
+      var subtaskDeadlineTime = new Date(sDeadlineStr).getTime();
+      if (subtaskDeadlineTime > parentDeadlineTime) {
+        var formattedParent = parentDoc.Deadline.replace('T', ' ');
+        showToast('Hạn chót công việc con không được vượt quá hạn chót của văn bản cha (' + formattedParent + ')!', 'error');
+        return;
+      }
     }
 
     var taskData = {
@@ -1132,18 +1196,17 @@
       docId: docId,
       title: document.getElementById('inline-subtask-title').value.trim(),
       assignee: document.getElementById('inline-subtask-assignee').value,
-      deadline: document.getElementById('inline-subtask-deadline').value,
+      deadline: subtaskDeadline,
       status: taskId ? document.getElementById('inline-subtask-status').value : 'Todo'
     };
 
-    // Optimistic UI: Add/update task in local state immediately
     var saveBtn = document.getElementById('btn-submit-inline-subtask');
     setBtnLoading(saveBtn, true);
     hideInlineSubTaskForm();
 
+    var tempTask = null;
     if (!taskId) {
-      // Optimistic add: push a temp task to appState
-      var tempTask = {
+      tempTask = {
         ID: '__temp__' + Date.now(),
         'Document ID': docId,
         Title: taskData.title,
@@ -1152,62 +1215,43 @@
         Status: 'Todo'
       };
       appState.subTasks.push(tempTask);
-      renderSubTasksList(currentDocIdForTasks);
-      refreshDetailProgressBar();
     } else {
-      // Optimistic edit
       var existing = appState.subTasks.find(t => t.ID === taskId);
-      if (existing) {
-        existing.Title = taskData.title;
-        existing.Assignee = taskData.assignee;
-        existing.Deadline = taskData.deadline;
-        existing.Status = taskData.status;
-      }
-      renderSubTasksList(currentDocIdForTasks);
-      refreshDetailProgressBar();
+      if (existing) Object.assign(existing, { Title: taskData.title, Assignee: taskData.assignee, Deadline: taskData.deadline, Status: taskData.status });
     }
+    renderSubTasksList(currentDocIdForTasks);
+    refreshDetailProgressBar();
 
     var callback = function (data) {
-      appState = data;
-      renderSubTasksList(currentDocIdForTasks);
-      refreshDetailProgressBar();
-      renderDocumentsTable();
-      renderDashboard();
-      renderProgressByEmployee();
-      setBtnLoading(saveBtn, false);
-      showToast(taskId ? 'Cập nhật công việc thành công' : 'Đã giao thêm công việc con');
+      try {
+        appState = data;
+        renderSubTasksList(currentDocIdForTasks);
+        refreshDetailProgressBar();
+        renderDocumentsTable(); renderDashboard(); renderProgressByEmployee();
+        showToast(taskId ? 'Cập nhật công việc thành công' : 'Đã giao thêm công việc con');
+      } catch (e) {
+        console.error('Callback render error: ' + e.message);
+      } finally {
+        setBtnLoading(saveBtn, false);
+      }
     };
 
-    if (taskId) {
-      google.script.run
-        .withSuccessHandler(callback)
-        .withFailureHandler(function (err) {
-          // Revert optimistic edit
-          setBtnLoading(saveBtn, false);
-          showToast('Lỗi lưu công việc: ' + err.message, 'error');
-        })
-        .updateSubTask(taskData);
-    } else {
-      google.script.run
-        .withSuccessHandler(callback)
-        .withFailureHandler(function (err) {
-          // Remove temp task on failure (use tempTask.ID to correctly match)
-          appState.subTasks = appState.subTasks.filter(t => t.ID !== tempTask.ID);
-          renderSubTasksList(currentDocIdForTasks);
-          refreshDetailProgressBar();
-          setBtnLoading(saveBtn, false);
-          showToast('Lỗi thêm công việc: ' + err.message, 'error');
-        })
-        .addSubTask(taskData);
-    }
+    google.script.run
+      .withSuccessHandler(callback)
+      .withFailureHandler(function (err) {
+        if (!taskId && tempTask) appState.subTasks = appState.subTasks.filter(t => t.ID !== tempTask.ID);
+        renderSubTasksList(currentDocIdForTasks); refreshDetailProgressBar();
+        setBtnLoading(saveBtn, false);
+        showToast('Lỗi: ' + err.message, 'error');
+      })
+    [taskId ? 'updateSubTask' : 'addSubTask'](taskData);
   }
 
-  // Helper to set a button into loading/normal state
   function setBtnLoading(btn, isLoading) {
     if (!btn) return;
     if (isLoading) {
       btn._origText = btn.innerHTML;
-      btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;"></span>';
+      btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;"></span>';
       btn.disabled = true;
     } else {
       btn.innerHTML = btn._origText || btn.innerHTML;
@@ -1216,32 +1260,22 @@
   }
 
   function deleteSubTask(taskId) {
-    if (confirm('Bạn có chắc muốn xóa công việc con này không?')) {
-      // Optimistic delete: remove from local state instantly
-      var removed = appState.subTasks.find(t => t.ID === taskId);
-      appState.subTasks = appState.subTasks.filter(t => t.ID !== taskId);
-      renderSubTasksList(currentDocIdForTasks);
-      refreshDetailProgressBar();
+    if (!confirm('Bạn có chắc muốn xóa công việc con này không?')) return;
+    var removed = appState.subTasks.find(t => t.ID === taskId);
+    appState.subTasks = appState.subTasks.filter(t => t.ID !== taskId);
+    renderSubTasksList(currentDocIdForTasks); refreshDetailProgressBar();
 
-      google.script.run
-        .withSuccessHandler(function (data) {
-          appState = data;
-          renderDocumentsTable();
-          renderDashboard();
-          renderProgressByEmployee();
-        })
-        .withFailureHandler(function (err) {
-          // Revert
-          if (removed) appState.subTasks.push(removed);
-          renderSubTasksList(currentDocIdForTasks);
-          refreshDetailProgressBar();
-          showToast('Lỗi xóa công việc: ' + err.message, 'error');
-        })
-        .deleteSubTask(taskId, currentDocIdForTasks);
-    }
+    google.script.run
+      .withSuccessHandler(function (data) { appState = data; renderDocumentsTable(); renderDashboard(); renderProgressByEmployee(); })
+      .withFailureHandler(function (err) {
+        if (removed) appState.subTasks.push(removed);
+        renderSubTasksList(currentDocIdForTasks); refreshDetailProgressBar();
+        showToast('Lỗi xóa công việc: ' + err.message, 'error');
+      })
+      .deleteSubTask(taskId, currentDocIdForTasks);
   }
 
-  // --- EMPLOYEES OPERATIONS ---
+  // ─── EMPLOYEES OPERATIONS ────────────────────────────
 
   function openAddEmployeeModal() {
     document.getElementById('employee-modal-title').textContent = 'Thêm Nhân Viên';
@@ -1253,22 +1287,16 @@
   function openEditEmployeeModal(empId) {
     var emp = appState.employees.find(e => e.ID === empId);
     if (!emp) return;
-
     document.getElementById('employee-modal-title').textContent = 'Sửa Nhân Viên';
     document.getElementById('emp-id').value = emp.ID;
     document.getElementById('emp-name').value = emp.Name;
     document.getElementById('emp-department').value = emp.Department;
-
     openModal('employee-modal');
   }
 
-  // Function to submit employee form
   function submitEmployeeForm() {
     var form = document.getElementById('employee-form');
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
+    if (!form.checkValidity()) { form.reportValidity(); return; }
 
     var empId = document.getElementById('emp-id').value;
     var empData = {
@@ -1281,109 +1309,70 @@
     setBtnLoading(saveBtn, true);
     closeModal('employee-modal');
 
+    var tempEmp = null;
     if (!empId) {
-      // Optimistic add
-      var tempEmp = {
-        ID: '__tmp_emp_' + Date.now(),
-        Name: empData.name,
-        Department: empData.department
-      };
-      console.log("appStates before: ", appState.employees);
+      tempEmp = { ID: '__tmp_emp_' + Date.now(), Name: empData.name, Department: empData.department };
       appState.employees.push(tempEmp);
-      console.log("appStates after: ", appState.employees);
-      renderEmployeesTable();
-      populateDropdowns();
     } else {
-      // Optimistic edit
-      var existingEmp = appState.employees.find(e => e.ID === empId);
-      if (existingEmp) {
-        existingEmp.Name = empData.name;
-        existingEmp.Department = empData.department;
-      }
-      renderEmployeesTable();
-      populateDropdowns();
+      var existing = appState.employees.find(e => e.ID === empId);
+      if (existing) { existing.Name = empData.name; existing.Department = empData.department; }
     }
+    renderEmployeesTable(); populateDropdowns();
 
-    var isNewEmp = !empId;
-    // Capture tempEmp reference safely for use in closures
-    var tempEmpRef = (typeof tempEmp !== 'undefined') ? tempEmp : null;
-
+    var isNew = !empId;
+    var tempEmpRef = tempEmp;
     var callback = function (data) {
-      appState = data;
-      renderEmployeesTable();
-      populateDropdowns();
-      renderProgressByEmployee();
-      renderDashboard();
+      appState = data; renderEmployeesTable(); populateDropdowns();
+      renderProgressByEmployee(); renderDashboard();
       setBtnLoading(saveBtn, false);
-      showToast(isNewEmp ? 'Thêm nhân viên thành công' : 'Cập nhật nhân viên thành công');
+      showToast(isNew ? 'Thêm nhân viên thành công' : 'Cập nhật nhân viên thành công');
     };
 
-    if (empId) {
-      google.script.run
-        .withSuccessHandler(callback)
-        .withFailureHandler(function (err) {
-          google.script.run.withSuccessHandler(function (d) { appState = d; renderAll(); }).getInitialData();
-          setBtnLoading(saveBtn, false);
-          showToast('Lỗi lưu nhân viên: ' + err.message, 'error');
-        })
-        .updateEmployee(empData);
-    } else {
-      google.script.run
-        .withSuccessHandler(callback)
-        .withFailureHandler(function (err) {
-          if (tempEmpRef) appState.employees = appState.employees.filter(e => e.ID !== tempEmpRef.ID);
-          renderEmployeesTable();
-          populateDropdowns();
-          setBtnLoading(saveBtn, false);
-          showToast('Lỗi thêm nhân viên: ' + err.message, 'error');
-        })
-        .addEmployee(empData);
-    }
+    google.script.run
+      .withSuccessHandler(callback)
+      .withFailureHandler(function (err) {
+        if (!empId && tempEmpRef) appState.employees = appState.employees.filter(e => e.ID !== tempEmpRef.ID);
+        renderEmployeesTable(); populateDropdowns();
+        setBtnLoading(saveBtn, false);
+        showToast('Lỗi: ' + err.message, 'error');
+      })
+    [empId ? 'updateEmployee' : 'addEmployee'](empData);
   }
 
   function deleteEmployee(empId) {
     var emp = appState.employees.find(e => e.ID === empId);
-    var empName = emp ? emp.Name : 'nhân viên này';
+    if (!confirm(`Xóa nhân viên "${emp ? emp.Name : empId}"?\nHọ vẫn tồn tại trong lịch sử các công việc đã giao.`)) return;
 
-    if (confirm(`Xóa nhân viên "${empName}"?\nHọ vẫn sẽ tồn tại trong lịch sử các công việc đã giao.`)) {
-      // Optimistic delete
-      var removedEmp = appState.employees.find(e => e.ID === empId);
-      appState.employees = appState.employees.filter(e => e.ID !== empId);
-      renderEmployeesTable();
-      populateDropdowns();
-      renderProgressByEmployee();
+    var removedEmp = emp;
+    appState.employees = appState.employees.filter(e => e.ID !== empId);
+    renderEmployeesTable(); populateDropdowns(); renderProgressByEmployee();
 
-      google.script.run
-        .withSuccessHandler(function (data) {
-          appState = data;
-          renderAll();
-          showToast('Đã xóa nhân viên');
-        })
-        .withFailureHandler(function (err) {
-          if (removedEmp) appState.employees.push(removedEmp);
-          renderEmployeesTable();
-          populateDropdowns();
-          renderProgressByEmployee();
-          showToast('Lỗi xóa nhân viên: ' + err.message, 'error');
-        })
-        .deleteEmployee(empId);
-    }
+    google.script.run
+      .withSuccessHandler(function (data) { appState = data; renderAll(); showToast('Đã xóa nhân viên'); })
+      .withFailureHandler(function (err) {
+        if (removedEmp) appState.employees.push(removedEmp);
+        renderEmployeesTable(); populateDropdowns(); renderProgressByEmployee();
+        showToast('Lỗi xóa nhân viên: ' + err.message, 'error');
+      })
+      .deleteEmployee(empId);
   }
 
-  // --- SETTINGS OPERATIONS ---
+  // ─── SETTINGS OPERATIONS ─────────────────────────────
 
   function saveSettings() {
     var settingsData = {
       emailEnabled: document.getElementById('setting-email-enabled').checked,
-      reminderHour: parseInt(document.getElementById('setting-reminder-hour').value),
+      calendarEnabled: document.getElementById('setting-calendar-enabled').checked,
+      calendarReminderMinutes: parseInt(document.getElementById('setting-calendar-reminder-minutes').value) || 60,
+      emailRecipient: document.getElementById('setting-email-recipient').value.trim(),
+      reminderTime: document.getElementById('setting-reminder-time').value,
       warningDays: parseInt(document.getElementById('setting-warning-days').value) || 3
     };
 
     showLoader(true);
     google.script.run
       .withSuccessHandler(function (data) {
-        appState = data;
-        renderAll();
+        appState = data; renderAll();
         showLoader(false);
         showToast('Đã lưu cài đặt và thiết lập Trigger gửi email!');
       })
@@ -1397,14 +1386,8 @@
   function sendTestEmail() {
     showLoader(true);
     google.script.run
-      .withSuccessHandler(function (msg) {
-        showLoader(false);
-        showToast(msg, 'info');
-      })
-      .withFailureHandler(function (err) {
-        showLoader(false);
-        showToast('Lỗi gửi email: ' + err.message, 'error');
-      })
+      .withSuccessHandler(function (msg) { showLoader(false); showToast(msg, 'info'); })
+      .withFailureHandler(function (err) { showLoader(false); showToast('Lỗi gửi email: ' + err.message, 'error'); })
       .testEmail();
   }
 </script>

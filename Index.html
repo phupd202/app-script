@@ -3,7 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Quản lý Văn bản & Công việc</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskDoc — Quản lý Văn bản &amp; Công việc</title>
+  <meta name="description"
+    content="Hệ thống quản lý văn bản và công việc nội bộ, theo dõi tiến độ, phân công nhiệm vụ và nhắc nhở deadline tự động.">
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <!-- Stylesheet Component -->
@@ -23,31 +26,31 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="logo-container">
-        <div class="logo-icon">MBF-NET</div>
+        <div class="logo-icon">MBF</div>
         <div class="logo-text">
-          TaskDoc
-          <span>Hệ thống Quản lý</span>
+          Mrs.Yen's TaskDoc
+          <span></span>
         </div>
       </div>
 
       <ul class="nav-links">
-        <li class="nav-link active" data-target="dashboard-view">
+        <li class="nav-link active" data-target="dashboard-view" id="nav-dashboard">
           <i class="material-icons">dashboard</i>
           <span>Dashboard</span>
         </li>
-        <li class="nav-link" data-target="documents-view">
+        <li class="nav-link" data-target="documents-view" id="nav-documents">
           <i class="material-icons">description</i>
           <span>Văn bản</span>
         </li>
-        <li class="nav-link" data-target="progress-view">
+        <li class="nav-link" data-target="progress-view" id="nav-progress">
           <i class="material-icons">donut_large</i>
           <span>Theo dõi tiến độ</span>
         </li>
-        <li class="nav-link" data-target="employees-view">
+        <li class="nav-link" data-target="employees-view" id="nav-employees">
           <i class="material-icons">people</i>
           <span>Nhân viên</span>
         </li>
-        <li class="nav-link" data-target="settings-view">
+        <li class="nav-link" data-target="settings-view" id="nav-settings">
           <i class="material-icons">settings</i>
           <span>Cài đặt</span>
         </li>
@@ -64,7 +67,9 @@
     <!-- Main Content Area -->
     <main class="main-content">
 
-      <!-- --- DASHBOARD VIEW --- -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- DASHBOARD VIEW                                  -->
+      <!-- ═══════════════════════════════════════════════ -->
       <section id="dashboard-view" class="section-view active">
         <div class="header-title-row">
           <h1>Tổng quan tiến độ</h1>
@@ -102,29 +107,29 @@
           </div>
         </div>
 
-        <!-- Lists for urgent tasks -->
+        <!-- Urgent & Overdue lists -->
         <div class="dashboard-sections">
           <div class="card card-header-accent">
-            <h2 style="font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <i class="material-icons" style="color: #ef4444;">error</i>
+            <h2
+              style="font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <i class="material-icons" style="color: #ef4444; font-size: 20px;">error</i>
               Công việc quá hạn cần xử lý gấp
             </h2>
             <div id="overdue-tasks-list" class="dashboard-list">
-              <!-- Dynamically populated -->
               <div class="empty-state">
-                <i class="material-icons">check_circle_outline</i>
+                <i class="material-icons" style="color: #10b981;">check_circle_outline</i>
                 <p>Không có công việc nào bị quá hạn!</p>
               </div>
             </div>
           </div>
 
           <div class="card card-header-accent">
-            <h2 style="font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <i class="material-icons" style="color: #f59e0b;">notifications_active</i>
+            <h2
+              style="font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <i class="material-icons" style="color: #f59e0b; font-size: 20px;">notifications_active</i>
               Sắp đến hạn / Hôm nay cần làm
             </h2>
             <div id="urgent-tasks-list" class="dashboard-list">
-              <!-- Dynamically populated -->
               <div class="empty-state">
                 <i class="material-icons">sentiment_very_satisfied</i>
                 <p>Không có công việc khẩn cấp trong vài ngày tới.</p>
@@ -134,7 +139,9 @@
         </div>
       </section>
 
-      <!-- --- DOCUMENTS VIEW --- -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- DOCUMENTS VIEW                                  -->
+      <!-- ═══════════════════════════════════════════════ -->
       <section id="documents-view" class="section-view">
         <div class="header-title-row">
           <h1>Quản lý Văn bản</h1>
@@ -143,31 +150,84 @@
           </button>
         </div>
 
-        <!-- Search & Filter Area -->
-        <div class="filter-row">
-          <div class="search-box">
-            <i class="material-icons">search</i>
-            <input type="text" id="search-document-input" placeholder="Tìm theo tên, mã hoặc nội dung văn bản...">
-          </div>
+        <!-- ─── Filter Bar ─────────────────────────────── -->
+        <div class="filter-bar">
 
-          <div class="filter-group">
+          <!-- Row 1: Search + Status + Employee -->
+          <div class="filter-row-top">
+            <div class="search-box">
+              <i class="material-icons">search</i>
+              <input type="text" id="search-document-input" placeholder="Tìm theo tên, mã hoặc nội dung văn bản...">
+            </div>
+
+            <div class="filter-group">
             <label for="filter-status">Trạng thái</label>
-            <select id="filter-status" class="filter-select">
+            <select id="filter-status" class="form-control" onchange="filterDocuments()">
               <option value="">Tất cả trạng thái</option>
               <option value="Mới tạo">Mới tạo</option>
+              <option value="Đã phân công">Đã phân công</option>
               <option value="Đang xử lý">Đang xử lý</option>
               <option value="Hoàn thành">Hoàn thành</option>
               <option value="Quá hạn">Quá hạn</option>
             </select>
           </div>
 
-          <div class="filter-group">
-            <label for="filter-employee">Nhân viên</label>
-            <select id="filter-employee" class="filter-select">
-              <option value="">Tất cả nhân viên</option>
-              <!-- Dynamically populated -->
-            </select>
+            <div class="filter-group">
+              <label for="filter-employee">Nhân viên</label>
+              <select id="filter-employee" class="filter-select">
+                <option value="">Tất cả</option>
+                <!-- Dynamically populated -->
+              </select>
+            </div>
           </div>
+
+          <!-- Row 2: Date range filters -->
+          <div class="filter-row-bottom">
+            <span class="filter-section-label">
+              <i class="material-icons" style="font-size: 13px; vertical-align: middle;">calendar_today</i>
+              Ngày nhận
+            </span>
+
+            <div class="filter-group">
+              <label for="filter-receive-from">Từ</label>
+              <input type="date" id="filter-receive-from" class="filter-date" title="Ngày nhận từ">
+            </div>
+            <div class="filter-group">
+              <label for="filter-receive-to">đến</label>
+              <input type="date" id="filter-receive-to" class="filter-date" title="Ngày nhận đến">
+            </div>
+
+            <span class="filter-section-label" style="margin-left: 8px;">
+              <i class="material-icons" style="font-size: 13px; vertical-align: middle;">event_busy</i>
+              Hạn chót
+            </span>
+
+            <div class="filter-group">
+              <label for="filter-deadline-from">Từ</label>
+              <input type="date" id="filter-deadline-from" class="filter-date" title="Hạn chót từ">
+            </div>
+            <div class="filter-group">
+              <label for="filter-deadline-to">đến</label>
+              <input type="date" id="filter-deadline-to" class="filter-date" title="Hạn chót đến">
+            </div>
+
+            <button class="btn btn-secondary btn-sm" id="btn-clear-doc-filters"
+              style="margin-left: auto; display: none;">
+              <i class="material-icons" style="font-size: 14px;">filter_alt_off</i> Xóa bộ lọc
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Active filter indicator -->
+        <div id="active-filter-bar" class="filter-active-bar" style="display: none;">
+          <span class="filter-active-label">
+            <i class="material-icons" style="font-size: 14px;">filter_alt</i>
+            Đang lọc:
+            <span class="filter-count-badge" id="filter-count-badge">0</span>
+            bộ lọc
+          </span>
+          <span class="result-count-label" id="result-count-label"></span>
         </div>
 
         <!-- Data Table -->
@@ -181,7 +241,7 @@
                 <th>Hạn chót</th>
                 <th>Tiến độ</th>
                 <th>Trạng thái</th>
-                <th style="width: 150px;">Thao tác</th>
+                <th style="width: 130px;">Thao tác</th>
               </tr>
             </thead>
             <tbody id="documents-table-body">
@@ -191,30 +251,67 @@
         </div>
       </section>
 
-      <!-- --- PROGRESS TRACKING VIEW --- -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- PROGRESS TRACKING VIEW                          -->
+      <!-- ═══════════════════════════════════════════════ -->
       <section id="progress-view" class="section-view">
         <div class="header-title-row">
-          <h1>Theo dõi tiến độ theo nhân sự</h1>
+          <h1>Theo dõi tiến độ nhân sự</h1>
+        </div>
+
+        <!-- Summary stats chips -->
+        <div class="tracking-stats-bar" id="tracking-stats-bar">
+          <!-- Dynamically populated -->
         </div>
 
         <!-- Filter Bar -->
-        <div class="filter-row" style="margin-bottom: 32px;">
-          <div class="filter-group" style="width: 100%;">
-            <label for="tracking-filter-employee" style="margin-right: 12px;">Lọc nhanh theo nhân sự</label>
-            <select id="tracking-filter-employee" class="filter-select" style="max-width: 300px;">
+        <div class="filter-row" style="margin-bottom: 24px;">
+          <div class="filter-group">
+            <label for="tracking-filter-employee">
+              <i class="material-icons" style="font-size: 15px; vertical-align: middle; margin-right: 4px;">person</i>
+              Nhân sự
+            </label>
+            <select id="tracking-filter-employee" class="filter-select" style="max-width: 260px;">
               <option value="">Tất cả nhân viên</option>
               <!-- Dynamically populated -->
             </select>
           </div>
+
+          <div class="filter-group">
+            <label for="tracking-filter-status">Trạng thái việc</label>
+            <select id="tracking-filter-status" class="filter-select" style="max-width: 200px;">
+              <option value="">Tất cả trạng thái</option>
+              <option value="Todo">Cần làm (Todo)</option>
+              <option value="Doing">Đang làm (Doing)</option>
+              <option value="Done">Hoàn thành (Done)</option>
+              <option value="Overdue">Quá hạn</option>
+            </select>
+          </div>
+
+          <div class="filter-group" style="margin-left: 10px;">
+            <label for="tracking-filter-deadline-from">Hạn chót từ</label>
+            <input type="date" id="tracking-filter-deadline-from" class="filter-date">
+          </div>
+          <div class="filter-group">
+            <label for="tracking-filter-deadline-to">đến</label>
+            <input type="date" id="tracking-filter-deadline-to" class="filter-date">
+          </div>
+
+          <button class="btn btn-secondary btn-sm" id="btn-clear-tracking-filters"
+            style="align-self: flex-end; margin-bottom: 4px; margin-left: auto; display: none;">
+            <i class="material-icons" style="font-size: 14px;">filter_alt_off</i> Xóa bộ lọc
+          </button>
         </div>
 
-        <!-- Workload Kanban/Grid -->
+        <!-- Workload Grid -->
         <div class="employee-workload-grid" id="employee-workload-container">
           <!-- Dynamically populated -->
         </div>
       </section>
 
-      <!-- --- EMPLOYEES VIEW --- -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- EMPLOYEES VIEW                                  -->
+      <!-- ═══════════════════════════════════════════════ -->
       <section id="employees-view" class="section-view">
         <div class="header-title-row">
           <h1>Danh sách Nhân sự</h1>
@@ -223,7 +320,6 @@
           </button>
         </div>
 
-        <!-- Data Table -->
         <div class="table-wrapper" style="max-width: 800px;">
           <table class="custom-table" id="employees-table">
             <thead>
@@ -241,7 +337,9 @@
         </div>
       </section>
 
-      <!-- --- SETTINGS VIEW --- -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- SETTINGS VIEW                                   -->
+      <!-- ═══════════════════════════════════════════════ -->
       <section id="settings-view" class="section-view">
         <div class="header-title-row">
           <h1>Cài đặt hệ thống</h1>
@@ -249,41 +347,44 @@
 
         <div class="settings-grid">
           <div class="card card-header-accent">
-            <h2 style="font-size: 16px; margin-bottom: 20px;">Nhắc nhở email tự động</h2>
+            <h2
+              style="font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+              <i class="material-icons" style="color: var(--primary);">email</i>
+              Nhắc nhở email tự động
+            </h2>
             <form id="settings-form" onsubmit="event.preventDefault();">
               <div class="form-row-checkbox">
                 <input type="checkbox" id="setting-email-enabled" checked>
-                <label for="setting-email-enabled" style="font-weight: 500;">Bật thông báo email hàng ngày</label>
+                <label for="setting-email-enabled" style="font-weight: 500; cursor: pointer;">Bật thông báo email hàng
+                  ngày</label>
               </div>
 
-              <div class="form-group">
-                <label for="setting-reminder-hour">Thời gian gửi email (Giờ trong ngày)</label>
-                <select id="setting-reminder-hour" class="form-control">
-                  <option value="0">00:00</option>
-                  <option value="1">01:00</option>
-                  <option value="2">02:00</option>
-                  <option value="3">03:00</option>
-                  <option value="4">04:00</option>
-                  <option value="5">05:00</option>
-                  <option value="6">06:00</option>
-                  <option value="7">07:00</option>
-                  <option value="8" selected>08:00</option>
-                  <option value="9">09:00</option>
-                  <option value="10">10:00</option>
-                  <option value="11">11:00</option>
-                  <option value="12">12:00</option>
-                  <option value="13">13:00</option>
-                  <option value="14">14:00</option>
-                  <option value="15">15:00</option>
-                  <option value="16">16:00</option>
-                  <option value="17">17:00</option>
-                  <option value="18">18:00</option>
-                  <option value="19">19:00</option>
-                  <option value="20">20:00</option>
-                  <option value="21">21:00</option>
-                  <option value="22">22:00</option>
-                  <option value="23">23:00</option>
+              <div class="form-row-checkbox">
+                <input type="checkbox" id="setting-calendar-enabled">
+                <label for="setting-calendar-enabled" style="font-weight: 500; cursor: pointer;">Bật đồng bộ Lịch Google
+                  (Tự động thông báo qua điện thoại)</label>
+              </div>
+
+              <div class="form-group" style="margin-top: 12px; margin-bottom: 24px;">
+                <label for="setting-calendar-reminder-minutes">Thời gian Lịch báo trước (Khi đồng bộ Lịch)</label>
+                <select id="setting-calendar-reminder-minutes" class="form-control">
+                  <option value="0">Đúng lúc (0 phút)</option>
+                  <option value="15">Trước 15 phút</option>
+                  <option value="60">Trước 1 giờ</option>
+                  <option value="120">Trước 2 giờ</option>
+                  <option value="1440">Trước 1 ngày</option>
+                  <option value="2880">Trước 2 ngày</option>
                 </select>
+              </div>
+
+              <div class="form-group" style="margin-top: 16px;">
+                <label for="setting-email-recipient">Email nhận thông báo (Để trống sẽ gửi về email hiện tại)</label>
+                <input type="email" id="setting-email-recipient" class="form-control" placeholder="admin@example.com">
+              </div>
+
+              <div class="form-group" style="margin-top: 4px;">
+                <label for="setting-reminder-time">Thời gian gửi email (Giờ:Phút)</label>
+                <input type="time" id="setting-reminder-time" class="form-control" value="08:00">
               </div>
 
               <div class="form-group">
@@ -303,16 +404,28 @@
           </div>
 
           <div class="card">
-            <h2 style="font-size: 16px; margin-bottom: 12px;">Thông tin ứng dụng</h2>
-            <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
-              Ứng dụng Quản lý Văn bản và Công việc (TaskDoc) chạy trên nền tảng Google Apps Script Web App và kết nối
-              trực tiếp với Google Sheets.
+            <h2
+              style="font-size: 16px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+              <i class="material-icons" style="color: var(--text-muted);">info</i>
+              Thông tin ứng dụng
+            </h2>
+            <p style="font-size: 13.5px; color: var(--text-muted); line-height: 1.7; margin-bottom: 16px;">
+              Ứng dụng Quản lý Văn bản và Công việc <strong>(TaskDoc)</strong> chạy trên nền tảng Google Apps Script Web
+              App và kết nối trực tiếp với Google Sheets.
             </p>
-            <div style="font-size: 13px; line-height: 1.8;">
-              <div>• <strong>Database:</strong> Google Sheets</div>
-              <div>• <strong>Phiên bản:</strong> 1.0.0</div>
-              <div>• <strong>Tính năng:</strong> Đồng bộ dữ liệu real-time, nhắc việc tự động qua Gmail, giao diện tối
-                ưu hóa di động.</div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="material-icons" style="font-size: 16px; color: var(--primary);">storage</i>
+                <span><strong>Database:</strong> Google Sheets</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="material-icons" style="font-size: 16px; color: var(--primary);">new_releases</i>
+                <span><strong>Phiên bản:</strong> 2.0.0</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="material-icons" style="font-size: 16px; color: var(--primary);">bolt</i>
+                <span><strong>Tính năng:</strong> Đồng bộ real-time, nhắc việc tự động qua Gmail, giao diện SaaS</span>
+              </div>
             </div>
           </div>
         </div>
@@ -321,7 +434,7 @@
     </main>
   </div>
 
-  <!-- ==================== MODALS ==================== -->
+  <!-- ════════════════════ MODALS ════════════════════ -->
 
   <!-- 1. Document Form Modal (Add/Edit) -->
   <div id="document-modal" class="modal-backdrop">
@@ -347,17 +460,19 @@
               placeholder="Ví dụ: Báo cáo công tác chuyển đổi số tháng 6">
           </div>
 
-          <div class="form-group">
-            <label for="doc-receive-date">Ngày nhận văn bản *</label>
-            <input type="date" id="doc-receive-date" class="form-control" required>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="doc-receive-date">Ngày nhận văn bản *</label>
+              <input type="date" id="doc-receive-date" class="form-control" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="doc-deadline">Hạn chót hoàn thành *</label>
+              <input type="datetime-local" id="doc-deadline" class="form-control" required>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="doc-deadline">Hạn chót hoàn thành *</label>
-            <input type="date" id="doc-deadline" class="form-control" required>
-          </div>
-
-          <div class="form-group">
+          <div class="form-group" style="margin-top: 18px;">
             <label for="doc-description">Nội dung công việc chỉ đạo</label>
             <textarea id="doc-description" class="form-control" rows="3"
               placeholder="Chi tiết chỉ đạo hoặc tóm tắt công việc..."></textarea>
@@ -366,25 +481,27 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('document-modal')">Hủy</button>
-        <button class="btn btn-primary" id="btn-submit-document">Lưu văn bản</button>
+        <button class="btn btn-primary" id="btn-submit-document">
+          <i class="material-icons">save</i> Lưu văn bản
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- (SubTask Form Modal deleted, replaced by inline form inside details modal) -->
-
-  <!-- 3. Document Details Modal -->
+  <!-- 2. Document Details Modal -->
   <div id="document-detail-modal" class="modal-backdrop">
-    <div class="modal" style="max-width: 700px;">
+    <div class="modal" style="max-width: 720px;">
       <div class="modal-header">
-        <h2>Chi tiết văn bản & Phân công</h2>
+        <h2>Chi tiết văn bản &amp; Phân công</h2>
         <button class="modal-close-btn" onclick="closeModal('document-detail-modal')">
           <i class="material-icons">close</i>
         </button>
       </div>
       <div class="modal-body">
-        <h1 id="detail-doc-name" style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--primary);">
-          Tên văn bản</h1>
+        <h1 id="detail-doc-name"
+          style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--primary); font-family: var(--font-display);">
+          Tên văn bản
+        </h1>
 
         <!-- Metadata grid -->
         <div class="detail-meta-grid">
@@ -401,46 +518,58 @@
             <span class="detail-meta-value" id="detail-doc-deadline">-</span>
           </div>
           <div class="detail-meta-item">
-            <span class="detail-meta-label">Trạng thái văn bản</span>
+            <span class="detail-meta-label">Trạng thái</span>
             <span id="detail-doc-status-badge" class="badge badge-new"
               style="align-self: flex-start; margin-top: 4px;">-</span>
           </div>
         </div>
 
-        <!-- Instruction / Description -->
+        <!-- Description -->
         <div class="form-group" style="margin-bottom: 24px;">
-          <label style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Nội dung chỉ đạo / Công
-            việc</label>
+          <label
+            style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Nội
+            dung chỉ đạo / Công việc</label>
           <div id="detail-doc-description"
-            style="padding: 12px; border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); font-size: 14px; background-color: rgba(0,0,0,0.01); line-height: 1.5; white-space: pre-line;">
-            -</div>
+            style="padding: 12px; border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); font-size: 13.5px; background-color: rgba(0,0,0,0.01); line-height: 1.6; white-space: pre-line; color: var(--text-main);">
+            -
+          </div>
         </div>
 
         <!-- Overall Progress -->
-        <div style="margin-bottom: 24px;">
-          <label
-            style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 8px;">Tiến
-            độ hoàn thành chỉ đạo</label>
-          <div class="progress-container">
-            <div class="progress-bar-bg" style="height: 10px;">
-              <div id="detail-progress-bar-fill" class="progress-bar-fill"></div>
-            </div>
-            <span id="detail-progress-text" class="progress-text" style="font-size: 14px;">0%</span>
+        <div
+          style="margin-bottom: 24px; padding: 14px; background: var(--bg-input); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <label
+              style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Tiến
+              độ hoàn thành</label>
+            <span id="detail-progress-text"
+              style="font-size: 16px; font-weight: 800; color: var(--text-main);">0%</span>
           </div>
+          <div class="progress-container" style="margin: 0;">
+            <div class="progress-bar-bg" style="height: 10px;">
+              <div id="detail-progress-bar-fill" class="progress-bar-fill" data-pct="low"></div>
+            </div>
+          </div>
+          <div id="detail-task-count-text" style="margin-top: 6px; font-size: 11.5px; color: var(--text-muted);">0 / 0
+            công việc hoàn thành</div>
         </div>
 
         <!-- Subtasks Section -->
         <div class="detail-subtasks-section">
           <div class="subtasks-header">
-            <h3>Danh sách công việc con (Sub-tasks)</h3>
+            <h3>
+              <i class="material-icons"
+                style="font-size: 16px; vertical-align: middle; margin-right: 4px;">checklist</i>
+              Danh sách công việc con
+            </h3>
             <button class="btn btn-primary btn-sm" id="btn-add-subtask-toggle">
-              <i class="material-icons" style="font-size: 16px;">add</i> Thêm việc
+              <i class="material-icons" style="font-size: 15px;">add</i> Thêm việc
             </button>
           </div>
 
-          <!-- Inline Subtask Form (Embedded inside details modal) -->
+          <!-- Inline Subtask Form -->
           <div id="inline-subtask-form-container"
-            style="display: none; padding: 16px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background-color: rgba(79, 70, 229, 0.03); margin-bottom: 16px; animation: fadeIn 0.2s ease;">
+            style="display: none; padding: 16px; border: 1px solid var(--primary-border); border-radius: var(--border-radius-sm); background-color: var(--primary-light); margin-bottom: 4px; animation: fadeIn 0.2s ease;">
             <h4 id="inline-subtask-form-title"
               style="font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--primary);">Thêm Công Việc Con
               Mới</h4>
@@ -450,13 +579,13 @@
 
               <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label for="inline-subtask-title" style="font-size: 11px; font-weight: 600;">Tên công việc *</label>
+                  <label for="inline-subtask-title" style="font-size: 11px; font-weight: 700;">Tên công việc *</label>
                   <input type="text" id="inline-subtask-title" class="form-control" required
                     style="padding: 8px 12px; font-size: 13px;" placeholder="Ví dụ: Soạn thảo văn bản">
                 </div>
 
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label for="inline-subtask-assignee" style="font-size: 11px; font-weight: 600;">Người thực hiện
+                  <label for="inline-subtask-assignee" style="font-size: 11px; font-weight: 700;">Người thực hiện
                     *</label>
                   <select id="inline-subtask-assignee" class="form-control" required
                     style="padding: 8px 12px; font-size: 13px; height: 38px;">
@@ -466,15 +595,15 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label for="inline-subtask-deadline" style="font-size: 11px; font-weight: 600;">Hạn chót *</label>
-                  <input type="date" id="inline-subtask-deadline" class="form-control" required
-                    style="padding: 8px 12px; font-size: 13px;">
+                  <label for="inline-subtask-deadline" style="font-size: 11px; font-weight: 700;">Hạn chót *</label>
+                  <input type="datetime-local" id="inline-subtask-deadline" class="form-control"
+                    style="flex: 1; min-width: 160px; padding: 8px 12px; font-size: 13px;">
                 </div>
               </div>
 
-              <!-- Inline status picker for editing subtasks -->
+              <!-- Status picker (edit mode only) -->
               <div class="form-group" id="inline-subtask-status-group" style="display: none; margin-bottom: 12px;">
-                <label for="inline-subtask-status" style="font-size: 11px; font-weight: 600;">Trạng thái</label>
+                <label for="inline-subtask-status" style="font-size: 11px; font-weight: 700;">Trạng thái</label>
                 <select id="inline-subtask-status" class="form-control"
                   style="padding: 8px 12px; font-size: 13px; height: 38px;">
                   <option value="Todo">Todo (Cần làm)</option>
@@ -485,13 +614,16 @@
 
               <div style="display: flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-inline-subtask">Hủy</button>
-                <button type="button" class="btn btn-primary btn-sm" id="btn-submit-inline-subtask">Lưu việc</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-submit-inline-subtask">
+                  <i class="material-icons" style="font-size: 14px;">save</i> Lưu việc
+                </button>
               </div>
             </form>
           </div>
 
+          <!-- Subtask list (grouped by status) -->
           <div id="detail-subtasks-list" class="subtask-list-container">
-            <!-- Dynamically populated subtask list items -->
+            <!-- Dynamically populated -->
           </div>
         </div>
       </div>
@@ -501,7 +633,7 @@
     </div>
   </div>
 
-  <!-- 4. Employee Form Modal (Add/Edit) -->
+  <!-- 3. Employee Form Modal (Add/Edit) -->
   <div id="employee-modal" class="modal-backdrop">
     <div class="modal">
       <div class="modal-header">
@@ -527,7 +659,9 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('employee-modal')">Hủy</button>
-        <button class="btn btn-primary" id="btn-submit-employee">Lưu nhân sự</button>
+        <button class="btn btn-primary" id="btn-submit-employee">
+          <i class="material-icons">save</i> Lưu nhân sự
+        </button>
       </div>
     </div>
   </div>
