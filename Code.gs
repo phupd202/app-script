@@ -461,14 +461,31 @@ function recalculateDocProgress(ss, docId) {
   var total = 0;
   var done = 0;
   var hasDoing = false;
+  var hasOverdue = false;
+  var now = new Date();
   
   for (var i = 1; i < taskData.length; i++) {
     if (taskData[i][1] === docId) {
       total++;
-      if (taskData[i][5] === 'Done') {
+      var status = taskData[i][5];
+      var deadlineStr = taskData[i][4];
+      
+      if (status === 'Done') {
         done++;
-      } else if (taskData[i][5] === 'Doing') {
-        hasDoing = true;
+      } else {
+        if (status === 'Doing') {
+          hasDoing = true;
+        }
+        
+        if (deadlineStr) {
+          var dl = new Date(String(deadlineStr).replace(' ', 'T'));
+          if (String(deadlineStr).trim().length <= 10) {
+            dl.setHours(23, 59, 59, 999);
+          }
+          if (now > dl) {
+            hasOverdue = true;
+          }
+        }
       }
     }
   }
@@ -478,7 +495,9 @@ function recalculateDocProgress(ss, docId) {
   // Determine doc status
   var status = 'Mới tạo';
   if (total > 0) {
-    if (done === total) {
+    if (hasOverdue) {
+      status = 'Quá hạn';
+    } else if (done === total) {
       status = 'Hoàn thành';
     } else if (done > 0 || hasDoing) {
       status = 'Đang xử lý';
@@ -492,7 +511,6 @@ function recalculateDocProgress(ss, docId) {
   for (var j = 1; j < docData.length; j++) {
     if (docData[j][0] === docId) {
       var rowNum = j + 1;
-      // Set explicit string to prevent sheets converting '100%' to 1.0 (which parses as 1%)
       docSheet.getRange(rowNum, 7).setValue("'" + progress + "%");
       docSheet.getRange(rowNum, 8).setValue(status);
       break;

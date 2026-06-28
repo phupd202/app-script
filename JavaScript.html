@@ -206,9 +206,7 @@
     var urgentTasks = [], overdueDocsList = [];
 
     appState.documents.forEach(function (doc) {
-      var deadlineDate = doc.Deadline ? new Date(doc.Deadline) : null;
-      if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
-      var isOver = deadlineDate && deadlineDate < today && doc.Status !== 'Hoàn thành';
+      var isOver = isDeadlineOverdue(doc.Deadline, doc.Status);
 
       if (doc.Status === 'Hoàn thành') { completed++; }
       else if (isOver) { overdue++; }
@@ -216,7 +214,13 @@
 
       if (isOver) {
         var docTasks = appState.subTasks.filter(t => t['Document ID'] === doc.ID);
-        var daysOverdue = Math.ceil((today.getTime() - deadlineDate.getTime()) / 86400000);
+        var daysOverdue = 0;
+        if (doc.Deadline) {
+          var deadlineDate = new Date(doc.Deadline.replace(' ', 'T'));
+          var diff = new Date().getTime() - deadlineDate.getTime();
+          daysOverdue = Math.ceil(diff / 86400000);
+          if (daysOverdue < 0) daysOverdue = 0;
+        }
         overdueDocsList.push({
           id: doc.ID,
           docNumber: doc['Document Number'] || '-',
@@ -317,9 +321,8 @@
         (doc.Description && doc.Description.toLowerCase().includes(searchVal));
 
       // 2. Status filter (with dynamic overdue)
-      var deadlineDate = doc.Deadline ? new Date(doc.Deadline) : null;
-      if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
-      var isOverdue = deadlineDate && deadlineDate < today && doc.Status !== 'Hoàn thành';
+      // 2. Status filter (with dynamic overdue)
+      var isOverdue = isDeadlineOverdue(doc.Deadline, doc.Status);
       var docStatus = isOverdue ? 'Quá hạn' : doc.Status;
       var matchStatus = !statusVal || docStatus === statusVal;
 
@@ -404,6 +407,18 @@
 
   // ─── STATUS HELPERS ──────────────────────────────────
 
+  function isDeadlineOverdue(deadlineStr, status) {
+    if (status === 'Hoàn thành' || status === 'Done' || !deadlineStr) return false;
+    var deadline = new Date(deadlineStr.replace(' ', 'T'));
+    var now = new Date();
+    if (deadlineStr.trim().length <= 10) {
+      var endOfDay = new Date(deadline);
+      endOfDay.setHours(23, 59, 59, 999);
+      return now > endOfDay;
+    }
+    return now > deadline;
+  }
+
   function getStatusBadge(status) {
     var cls = 'badge-new';
     if (status === 'Đang xử lý') cls = 'badge-doing';
@@ -428,7 +443,13 @@
     var doneTasks = subtasks.filter(function (st) { return st.status === 'Done' || st.Status === 'Done'; }).length;
     doc.Progress = Math.round((doneTasks / subtasks.length) * 100);
 
-    if (doneTasks === subtasks.length) {
+    var hasOverdue = subtasks.some(function (st) {
+      return isDeadlineOverdue(st.Deadline || st.deadline, st.Status || st.status);
+    });
+
+    if (hasOverdue) {
+      doc.Status = 'Quá hạn';
+    } else if (doneTasks === subtasks.length) {
       doc.Status = 'Hoàn thành';
     } else if (doneTasks > 0) {
       doc.Status = 'Đang xử lý';
@@ -518,11 +539,7 @@
     var totalTasks = allTasks.length;
     var doneTasks = allTasks.filter(t => t.Status === 'Done').length;
     var doingTasks = allTasks.filter(t => t.Status === 'Doing').length;
-    var overdueTasks = allTasks.filter(t => {
-      if (t.Status === 'Done' || !t.Deadline) return false;
-      var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
-      return d < today;
-    }).length;
+    var overdueTasks = allTasks.filter(t => isDeadlineOverdue(t.Deadline, t.Status)).length;
     var todoTasks = allTasks.filter(t => t.Status === 'Todo').length;
 
     if (statsBar) {
@@ -567,11 +584,7 @@
       var displayTasks = tasks;
       if (filterStatus) {
         if (filterStatus === 'Overdue') {
-          displayTasks = tasks.filter(t => {
-            if (t.Status === 'Done' || !t.Deadline) return false;
-            var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
-            return d < today;
-          });
+          displayTasks = tasks.filter(t => isDeadlineOverdue(t.Deadline, t.Status));
         } else {
           displayTasks = tasks.filter(t => t.Status === filterStatus);
         }
@@ -589,22 +602,14 @@
       var pct = totalCount === 0 ? 0 : Math.round(doneCount / totalCount * 100);
 
       // Group display tasks by status priority: Overdue > Doing > Todo > Done
-      var groupOverdue = displayTasks.filter(t => {
-        if (t.Status === 'Done' || !t.Deadline) return false;
-        var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
-        return d < today;
-      });
+      var groupOverdue = displayTasks.filter(t => isDeadlineOverdue(t.Deadline, t.Status));
       var groupDoing = displayTasks.filter(t => {
         if (t.Status !== 'Doing') return false;
-        if (!t.Deadline) return true;
-        var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
-        return d >= today;
+        return !isDeadlineOverdue(t.Deadline, t.Status);
       });
       var groupTodo = displayTasks.filter(t => {
         if (t.Status !== 'Todo') return false;
-        if (!t.Deadline) return true;
-        var d = new Date(t.Deadline); d.setHours(0, 0, 0, 0);
-        return d >= today;
+        return !isDeadlineOverdue(t.Deadline, t.Status);
       });
       var groupDone = displayTasks.filter(t => t.Status === 'Done');
 
