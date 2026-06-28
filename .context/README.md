@@ -101,3 +101,6 @@ Hệ thống hỗ trợ gửi email nhắc việc tự động vào một khung 
   * Tích chọn hoàn thành nhanh hoặc thay đổi trạng thái từng công việc con để hệ thống tự động cập nhật phần trăm tiến độ của văn bản tương ứng về Google Sheets.
 * **Theo dõi tiến độ:** Gom nhóm tất cả công việc theo từng nhân viên dưới dạng các thẻ (Workload cards) trực quan, giúp người quản lý biết ngay ai đang làm công việc gì, thuộc văn bản nào và tiến độ ra sao.
 * **Nhân viên:** Quản lý danh sách nhân sự của phòng ban để phục vụ cho việc chọn nhanh người thực hiện khi phân chia công việc con.
+---
+## Link webhook cho cron job
+https://script.google.com/macros/s/ID_WEB_APP/exec?action=cron&token=mbf_taskdoc_secret_token_123
