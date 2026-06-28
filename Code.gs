@@ -9,6 +9,26 @@ var cachedSpreadsheet = null;
 
 // Custom web app entry point
 function doGet(e) {
+  // Check if it's an external cron trigger request
+  if (e && e.parameter && e.parameter.action === 'cron') {
+    var token = e.parameter.token;
+    var EXPECTED_TOKEN = 'mbf_taskdoc_secret_token_123';
+    
+    if (token === EXPECTED_TOKEN) {
+      try {
+        sendDailyReminders();
+        return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Emails sent successfully' }))
+                             .setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+                             .setMimeType(ContentService.MimeType.JSON);
+      }
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Unauthorized' }))
+                           .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   // Ensure database sheets exist (only checked once on page load)
   try { initDatabase(); } catch(initErr) { console.error('initDatabase error: ' + initErr.message); }
   
@@ -707,7 +727,13 @@ function setupTrigger(timeStr, emailEnabled) {
   
   // Create new one if emails are enabled
   if (emailEnabled && timeStr) {
-    var parts = timeStr.split(':');
+    var cleanTime = String(timeStr).trim();
+    if (cleanTime.indexOf(' ') > -1) {
+      cleanTime = cleanTime.split(' ')[1];
+    } else if (cleanTime.indexOf('T') > -1) {
+      cleanTime = cleanTime.split('T')[1];
+    }
+    var parts = cleanTime.split(':');
     var hour = parseInt(parts[0], 10) || 8;
     var minute = parseInt(parts[1], 10) || 0;
     

@@ -743,7 +743,18 @@
     if (recipEl) recipEl.value = s.emailRecipient || '';
 
     var timeEl = document.getElementById('setting-reminder-time');
-    if (timeEl) timeEl.value = s.reminderTime || '08:00';
+    if (timeEl) {
+      var rTime = s.reminderTime || '08:00';
+      if (rTime.includes(' ')) {
+        rTime = rTime.split(' ')[1];
+      } else if (rTime.includes('T')) {
+        rTime = rTime.split('T')[1];
+      }
+      if (rTime.length > 5) {
+        rTime = rTime.substring(0, 5);
+      }
+      timeEl.value = rTime;
+    }
 
     var warnEl = document.getElementById('setting-warning-days');
     if (warnEl) warnEl.value = s.warningDays !== undefined ? s.warningDays : 3;
