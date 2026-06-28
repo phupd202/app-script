@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý Văn bản & Công việc</title>
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Stylesheet Component -->
+  <?!= include('Styles'); ?>
+</head>
+
+<body>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Đang tải dữ liệu...</div>
+  </div>
+
+  <div class="app-container">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="logo-container">
+        <div class="logo-icon">MBF-NET</div>
+        <div class="logo-text">
+          TaskDoc
+          <span>Hệ thống Quản lý</span>
+        </div>
+      </div>
+
+      <ul class="nav-links">
+        <li class="nav-link active" data-target="dashboard-view">
+          <i class="material-icons">dashboard</i>
+          <span>Dashboard</span>
+        </li>
+        <li class="nav-link" data-target="documents-view">
+          <i class="material-icons">description</i>
+          <span>Văn bản</span>
+        </li>
+        <li class="nav-link" data-target="progress-view">
+          <i class="material-icons">donut_large</i>
+          <span>Theo dõi tiến độ</span>
+        </li>
+        <li class="nav-link" data-target="employees-view">
+          <i class="material-icons">people</i>
+          <span>Nhân viên</span>
+        </li>
+        <li class="nav-link" data-target="settings-view">
+          <i class="material-icons">settings</i>
+          <span>Cài đặt</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <button id="theme-toggle-btn" class="theme-toggle-btn">
+          <i class="material-icons" id="theme-icon">dark_mode</i>
+          <span id="theme-text">Chế độ tối</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- --- DASHBOARD VIEW --- -->
+      <section id="dashboard-view" class="section-view active">
+        <div class="header-title-row">
+          <h1>Tổng quan tiến độ</h1>
+        </div>
+
+        <!-- Statistics cards -->
+        <div class="stats-grid">
+          <div class="stat-card stat-total">
+            <div class="stat-icon"><i class="material-icons">description</i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-docs">0</span>
+              <span class="stat-label">Tổng văn bản</span>
+            </div>
+          </div>
+          <div class="stat-card stat-doing">
+            <div class="stat-icon"><i class="material-icons">pending_actions</i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-doing-docs">0</span>
+              <span class="stat-label">Đang xử lý</span>
+            </div>
+          </div>
+          <div class="stat-card stat-done">
+            <div class="stat-icon"><i class="material-icons">task_alt</i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-done-docs">0</span>
+              <span class="stat-label">Hoàn thành</span>
+            </div>
+          </div>
+          <div class="stat-card stat-overdue">
+            <div class="stat-icon"><i class="material-icons">error_outline</i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-overdue-docs">0</span>
+              <span class="stat-label">Quá hạn</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lists for urgent tasks -->
+        <div class="dashboard-sections">
+          <div class="card card-header-accent">
+            <h2 style="font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <i class="material-icons" style="color: #ef4444;">error</i>
+              Công việc quá hạn cần xử lý gấp
+            </h2>
+            <div id="overdue-tasks-list" class="dashboard-list">
+              <!-- Dynamically populated -->
+              <div class="empty-state">
+                <i class="material-icons">check_circle_outline</i>
+                <p>Không có công việc nào bị quá hạn!</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-header-accent">
+            <h2 style="font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <i class="material-icons" style="color: #f59e0b;">notifications_active</i>
+              Sắp đến hạn / Hôm nay cần làm
+            </h2>
+            <div id="urgent-tasks-list" class="dashboard-list">
+              <!-- Dynamically populated -->
+              <div class="empty-state">
+                <i class="material-icons">sentiment_very_satisfied</i>
+                <p>Không có công việc khẩn cấp trong vài ngày tới.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- --- DOCUMENTS VIEW --- -->
+      <section id="documents-view" class="section-view">
+        <div class="header-title-row">
+          <h1>Quản lý Văn bản</h1>
+          <button class="btn btn-primary" id="btn-add-document">
+            <i class="material-icons">add</i> Thêm văn bản
+          </button>
+        </div>
+
+        <!-- Search & Filter Area -->
+        <div class="filter-row">
+          <div class="search-box">
+            <i class="material-icons">search</i>
+            <input type="text" id="search-document-input" placeholder="Tìm theo tên, mã hoặc nội dung văn bản...">
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-status">Trạng thái</label>
+            <select id="filter-status" class="filter-select">
+              <option value="">Tất cả trạng thái</option>
+              <option value="Mới tạo">Mới tạo</option>
+              <option value="Đang xử lý">Đang xử lý</option>
+              <option value="Hoàn thành">Hoàn thành</option>
+              <option value="Quá hạn">Quá hạn</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-employee">Nhân viên</label>
+            <select id="filter-employee" class="filter-select">
+              <option value="">Tất cả nhân viên</option>
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-wrapper">
+          <table class="custom-table" id="documents-table">
+            <thead>
+              <tr>
+                <th>Số/Mã VB</th>
+                <th>Tên văn bản</th>
+                <th>Ngày nhận</th>
+                <th>Hạn chót</th>
+                <th>Tiến độ</th>
+                <th>Trạng thái</th>
+                <th style="width: 150px;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="documents-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- --- PROGRESS TRACKING VIEW --- -->
+      <section id="progress-view" class="section-view">
+        <div class="header-title-row">
+          <h1>Theo dõi tiến độ theo nhân sự</h1>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-row" style="margin-bottom: 32px;">
+          <div class="filter-group" style="width: 100%;">
+            <label for="tracking-filter-employee" style="margin-right: 12px;">Lọc nhanh theo nhân sự</label>
+            <select id="tracking-filter-employee" class="filter-select" style="max-width: 300px;">
+              <option value="">Tất cả nhân viên</option>
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Workload Kanban/Grid -->
+        <div class="employee-workload-grid" id="employee-workload-container">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- --- EMPLOYEES VIEW --- -->
+      <section id="employees-view" class="section-view">
+        <div class="header-title-row">
+          <h1>Danh sách Nhân sự</h1>
+          <button class="btn btn-primary" id="btn-add-employee">
+            <i class="material-icons">person_add</i> Thêm nhân viên
+          </button>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-wrapper" style="max-width: 800px;">
+          <table class="custom-table" id="employees-table">
+            <thead>
+              <tr>
+                <th>Mã NV</th>
+                <th>Tên nhân viên</th>
+                <th>Phòng ban</th>
+                <th style="width: 120px;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="employees-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- --- SETTINGS VIEW --- -->
+      <section id="settings-view" class="section-view">
+        <div class="header-title-row">
+          <h1>Cài đặt hệ thống</h1>
+        </div>
+
+        <div class="settings-grid">
+          <div class="card card-header-accent">
+            <h2 style="font-size: 16px; margin-bottom: 20px;">Nhắc nhở email tự động</h2>
+            <form id="settings-form" onsubmit="event.preventDefault();">
+              <div class="form-row-checkbox">
+                <input type="checkbox" id="setting-email-enabled" checked>
+                <label for="setting-email-enabled" style="font-weight: 500;">Bật thông báo email hàng ngày</label>
+              </div>
+
+              <div class="form-group">
+                <label for="setting-reminder-hour">Thời gian gửi email (Giờ trong ngày)</label>
+                <select id="setting-reminder-hour" class="form-control">
+                  <option value="0">00:00</option>
+                  <option value="1">01:00</option>
+                  <option value="2">02:00</option>
+                  <option value="3">03:00</option>
+                  <option value="4">04:00</option>
+                  <option value="5">05:00</option>
+                  <option value="6">06:00</option>
+                  <option value="7">07:00</option>
+                  <option value="8" selected>08:00</option>
+                  <option value="9">09:00</option>
+                  <option value="10">10:00</option>
+                  <option value="11">11:00</option>
+                  <option value="12">12:00</option>
+                  <option value="13">13:00</option>
+                  <option value="14">14:00</option>
+                  <option value="15">15:00</option>
+                  <option value="16">16:00</option>
+                  <option value="17">17:00</option>
+                  <option value="18">18:00</option>
+                  <option value="19">19:00</option>
+                  <option value="20">20:00</option>
+                  <option value="21">21:00</option>
+                  <option value="22">22:00</option>
+                  <option value="23">23:00</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="setting-warning-days">Số ngày nhắc nhở trước hạn chót</label>
+                <input type="number" id="setting-warning-days" class="form-control" min="1" max="30" value="3">
+              </div>
+
+              <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="btn-save-settings">
+                  <i class="material-icons">save</i> Lưu cấu hình
+                </button>
+                <button class="btn btn-secondary" id="btn-test-email">
+                  <i class="material-icons">alternate_email</i> Gửi email test
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2 style="font-size: 16px; margin-bottom: 12px;">Thông tin ứng dụng</h2>
+            <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+              Ứng dụng Quản lý Văn bản và Công việc (TaskDoc) chạy trên nền tảng Google Apps Script Web App và kết nối
+              trực tiếp với Google Sheets.
+            </p>
+            <div style="font-size: 13px; line-height: 1.8;">
+              <div>• <strong>Database:</strong> Google Sheets</div>
+              <div>• <strong>Phiên bản:</strong> 1.0.0</div>
+              <div>• <strong>Tính năng:</strong> Đồng bộ dữ liệu real-time, nhắc việc tự động qua Gmail, giao diện tối
+                ưu hóa di động.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. Document Form Modal (Add/Edit) -->
+  <div id="document-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="document-modal-title">Thêm Văn Bản Mới</h2>
+        <button class="modal-close-btn" onclick="closeModal('document-modal')">
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="document-form" onsubmit="event.preventDefault();">
+          <input type="hidden" id="doc-id">
+
+          <div class="form-group">
+            <label for="doc-number">Số / Ký hiệu văn bản *</label>
+            <input type="text" id="doc-number" class="form-control" required placeholder="Ví dụ: 12/BC-VP">
+          </div>
+
+          <div class="form-group">
+            <label for="doc-name">Tên văn bản *</label>
+            <input type="text" id="doc-name" class="form-control" required
+              placeholder="Ví dụ: Báo cáo công tác chuyển đổi số tháng 6">
+          </div>
+
+          <div class="form-group">
+            <label for="doc-receive-date">Ngày nhận văn bản *</label>
+            <input type="date" id="doc-receive-date" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="doc-deadline">Hạn chót hoàn thành *</label>
+            <input type="date" id="doc-deadline" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="doc-description">Nội dung công việc chỉ đạo</label>
+            <textarea id="doc-description" class="form-control" rows="3"
+              placeholder="Chi tiết chỉ đạo hoặc tóm tắt công việc..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('document-modal')">Hủy</button>
+        <button class="btn btn-primary" id="btn-submit-document">Lưu văn bản</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- (SubTask Form Modal deleted, replaced by inline form inside details modal) -->
+
+  <!-- 3. Document Details Modal -->
+  <div id="document-detail-modal" class="modal-backdrop">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2>Chi tiết văn bản & Phân công</h2>
+        <button class="modal-close-btn" onclick="closeModal('document-detail-modal')">
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <h1 id="detail-doc-name" style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--primary);">
+          Tên văn bản</h1>
+
+        <!-- Metadata grid -->
+        <div class="detail-meta-grid">
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Số / Mã văn bản</span>
+            <span class="detail-meta-value" id="detail-doc-number">-</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Ngày nhận</span>
+            <span class="detail-meta-value" id="detail-doc-receive-date">-</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Hạn chót</span>
+            <span class="detail-meta-value" id="detail-doc-deadline">-</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Trạng thái văn bản</span>
+            <span id="detail-doc-status-badge" class="badge badge-new"
+              style="align-self: flex-start; margin-top: 4px;">-</span>
+          </div>
+        </div>
+
+        <!-- Instruction / Description -->
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Nội dung chỉ đạo / Công
+            việc</label>
+          <div id="detail-doc-description"
+            style="padding: 12px; border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); font-size: 14px; background-color: rgba(0,0,0,0.01); line-height: 1.5; white-space: pre-line;">
+            -</div>
+        </div>
+
+        <!-- Overall Progress -->
+        <div style="margin-bottom: 24px;">
+          <label
+            style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 8px;">Tiến
+            độ hoàn thành chỉ đạo</label>
+          <div class="progress-container">
+            <div class="progress-bar-bg" style="height: 10px;">
+              <div id="detail-progress-bar-fill" class="progress-bar-fill"></div>
+            </div>
+            <span id="detail-progress-text" class="progress-text" style="font-size: 14px;">0%</span>
+          </div>
+        </div>
+
+        <!-- Subtasks Section -->
+        <div class="detail-subtasks-section">
+          <div class="subtasks-header">
+            <h3>Danh sách công việc con (Sub-tasks)</h3>
+            <button class="btn btn-primary btn-sm" id="btn-add-subtask-toggle">
+              <i class="material-icons" style="font-size: 16px;">add</i> Thêm việc
+            </button>
+          </div>
+
+          <!-- Inline Subtask Form (Embedded inside details modal) -->
+          <div id="inline-subtask-form-container"
+            style="display: none; padding: 16px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background-color: rgba(79, 70, 229, 0.03); margin-bottom: 16px; animation: fadeIn 0.2s ease;">
+            <h4 id="inline-subtask-form-title"
+              style="font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--primary);">Thêm Công Việc Con
+              Mới</h4>
+            <form id="inline-subtask-form" onsubmit="event.preventDefault();">
+              <input type="hidden" id="inline-subtask-id">
+              <input type="hidden" id="inline-subtask-doc-id">
+
+              <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="inline-subtask-title" style="font-size: 11px; font-weight: 600;">Tên công việc *</label>
+                  <input type="text" id="inline-subtask-title" class="form-control" required
+                    style="padding: 8px 12px; font-size: 13px;" placeholder="Ví dụ: Soạn thảo văn bản">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="inline-subtask-assignee" style="font-size: 11px; font-weight: 600;">Người thực hiện
+                    *</label>
+                  <select id="inline-subtask-assignee" class="form-control" required
+                    style="padding: 8px 12px; font-size: 13px; height: 38px;">
+                    <option value="">-- Chọn --</option>
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="inline-subtask-deadline" style="font-size: 11px; font-weight: 600;">Hạn chót *</label>
+                  <input type="date" id="inline-subtask-deadline" class="form-control" required
+                    style="padding: 8px 12px; font-size: 13px;">
+                </div>
+              </div>
+
+              <!-- Inline status picker for editing subtasks -->
+              <div class="form-group" id="inline-subtask-status-group" style="display: none; margin-bottom: 12px;">
+                <label for="inline-subtask-status" style="font-size: 11px; font-weight: 600;">Trạng thái</label>
+                <select id="inline-subtask-status" class="form-control"
+                  style="padding: 8px 12px; font-size: 13px; height: 38px;">
+                  <option value="Todo">Todo (Cần làm)</option>
+                  <option value="Doing">Doing (Đang làm)</option>
+                  <option value="Done">Done (Hoàn thành)</option>
+                </select>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-inline-subtask">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-submit-inline-subtask">Lưu việc</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="detail-subtasks-list" class="subtask-list-container">
+            <!-- Dynamically populated subtask list items -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('document-detail-modal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Employee Form Modal (Add/Edit) -->
+  <div id="employee-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="employee-modal-title">Thêm Nhân Viên</h2>
+        <button class="modal-close-btn" onclick="closeModal('employee-modal')">
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="employee-form" onsubmit="event.preventDefault();">
+          <input type="hidden" id="emp-id">
+
+          <div class="form-group">
+            <label for="emp-name">Họ và tên nhân viên *</label>
+            <input type="text" id="emp-name" class="form-control" required placeholder="Ví dụ: Nguyễn Văn A">
+          </div>
+
+          <div class="form-group">
+            <label for="emp-department">Phòng ban / Bộ phận *</label>
+            <input type="text" id="emp-department" class="form-control" required placeholder="Ví dụ: Phòng Kế hoạch">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('employee-modal')">Hủy</button>
+        <button class="btn btn-primary" id="btn-submit-employee">Lưu nhân sự</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client-side Logic Script Component -->
+  <?!= include('JavaScript'); ?>
+</body>
+
+</html>
