@@ -9,6 +9,8 @@
     content="Hệ thống quản lý văn bản và công việc nội bộ, theo dõi tiến độ, phân công nhiệm vụ và nhắc nhở deadline tự động.">
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- xlsx-js-style for Excel Export with formatting -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <!-- Stylesheet Component -->
   <?!= include('Styles'); ?>
 </head>
@@ -41,6 +43,10 @@
         <li class="nav-link" data-target="documents-view" id="nav-documents">
           <i class="material-icons">description</i>
           <span>Văn bản</span>
+        </li>
+        <li class="nav-link" data-target="calendar-view" id="nav-calendar">
+          <i class="material-icons">calendar_month</i>
+          <span>Lịch công việc</span>
         </li>
         <li class="nav-link" data-target="progress-view" id="nav-progress">
           <i class="material-icons">donut_large</i>
@@ -145,9 +151,16 @@
       <section id="documents-view" class="section-view">
         <div class="header-title-row">
           <h1>Quản lý Văn bản</h1>
-          <button class="btn btn-primary" id="btn-add-document">
-            <i class="material-icons">add</i> Thêm văn bản
-          </button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" id="btn-export-excel"
+              style="background-color: #10b981; color: white; border-color: #10b981;">
+              <i class="material-icons" style="color: white;">table_view</i> <span style="color: white;">Xuất
+                Excel</span>
+            </button>
+            <button class="btn btn-primary" id="btn-add-document">
+              <i class="material-icons">add</i> Thêm văn bản
+            </button>
+          </div>
         </div>
 
         <!-- ─── Filter Bar ─────────────────────────────── -->
@@ -161,16 +174,16 @@
             </div>
 
             <div class="filter-group">
-            <label for="filter-status">Trạng thái</label>
-            <select id="filter-status" class="form-control" onchange="filterDocuments()">
-              <option value="">Tất cả trạng thái</option>
-              <option value="Mới tạo">Mới tạo</option>
-              <option value="Đã phân công">Đã phân công</option>
-              <option value="Đang xử lý">Đang xử lý</option>
-              <option value="Hoàn thành">Hoàn thành</option>
-              <option value="Quá hạn">Quá hạn</option>
-            </select>
-          </div>
+              <label for="filter-status">Trạng thái</label>
+              <select id="filter-status" class="form-control" onchange="filterDocuments()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="Mới tạo">Mới tạo</option>
+                <option value="Đã phân công">Đã phân công</option>
+                <option value="Đang xử lý">Đang xử lý</option>
+                <option value="Hoàn thành">Hoàn thành</option>
+                <option value="Quá hạn">Quá hạn</option>
+              </select>
+            </div>
 
             <div class="filter-group">
               <label for="filter-employee">Nhân viên</label>
@@ -431,6 +444,49 @@
         </div>
       </section>
 
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- CALENDAR VIEW                                   -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <section id="calendar-view" class="section-view">
+        <div class="header-title-row">
+          <h1>Lịch công việc</h1>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="calendar-view-mode" class="form-control"
+              style="width: auto; padding: 4px 10px; height: 32px; font-size: 13px;">
+              <option value="week">Theo Tuần</option>
+              <option value="month">Theo Tháng</option>
+            </select>
+            <div style="width: 1px; height: 24px; background: var(--border-color); margin: 0 4px;"></div>
+            <button class="btn btn-secondary btn-icon-only" id="btn-prev-month">
+              <i class="material-icons">chevron_left</i>
+            </button>
+            <span id="calendar-month-label"
+              style="font-weight: bold; font-size: 15px; min-width: 160px; text-align: center;">Tháng...</span>
+            <button class="btn btn-secondary btn-icon-only" id="btn-next-month">
+              <i class="material-icons">chevron_right</i>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-today-month" style="margin-left: 10px;">
+              Hôm nay
+            </button>
+          </div>
+        </div>
+
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <div class="day-name" style="color: #ef4444;">CN</div>
+            <div class="day-name">Hai</div>
+            <div class="day-name">Ba</div>
+            <div class="day-name">Tư</div>
+            <div class="day-name">Năm</div>
+            <div class="day-name">Sáu</div>
+            <div class="day-name" style="color: #f59e0b;">Bảy</div>
+          </div>
+          <div class="calendar-grid" id="calendar-grid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -662,6 +718,58 @@
         <button class="btn btn-primary" id="btn-submit-employee">
           <i class="material-icons">save</i> Lưu nhân sự
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Calendar Task Modal -->
+  <div class="modal-backdrop" id="calendar-task-modal">
+    <div class="modal" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2 id="calendar-task-modal-title">Chi tiết công việc</h2>
+        <button class="modal-close-btn" onclick="closeModal('calendar-task-modal')">
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div
+          style="margin-bottom: 24px; background-color: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.2); border-left: 4px solid #ef4444; padding: 14px; border-radius: 6px;">
+          <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Thông tin Văn bản
+            cha:</strong>
+          <div id="cal-modal-doc-combined-name"
+            style="font-weight: 600; font-size: 14.5px; color: var(--primary); margin-top: 8px; margin-bottom: 10px; line-height: 1.5; word-wrap: break-word;">
+            [Mã]_Tên văn bản
+          </div>
+          <div
+            style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; border-top: 1px dashed rgba(239, 68, 68, 0.2); padding-top: 10px;">
+            Hạn chót VB: <span id="cal-modal-doc-deadline"
+              style="color: #ef4444; font-weight: 700; background: rgba(239, 68, 68, 0.1); padding: 3px 8px; border-radius: 4px; margin-left: 6px;">-</span>
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Tên công việc:</strong>
+          <div id="cal-modal-task-name" style="margin-top: 4px; font-size: 14px; font-weight: 500;">-</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div>
+            <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Người phụ
+              trách:</strong>
+            <div id="cal-modal-assignee" style="margin-top: 4px;">-</div>
+          </div>
+          <div>
+            <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Hạn chót công việc
+              con:</strong>
+            <div id="cal-modal-deadline" style="margin-top: 4px; color: #ef4444; font-weight: 500;">-</div>
+          </div>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Trạng thái:</strong>
+          <div style="margin-top: 6px;" id="cal-modal-status-badge"></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeModal('calendar-task-modal')">Đóng</button>
+        <button class="btn btn-primary" id="btn-cal-modal-view-doc">Xem chi tiết Văn bản</button>
       </div>
     </div>
   </div>

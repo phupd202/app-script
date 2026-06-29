@@ -25,6 +25,16 @@
     initTheme();
     setupNavigation();
     setupEventListeners();
+
+    // Calendar View Mode Listener
+    var modeSelect = document.getElementById('calendar-view-mode');
+    if (modeSelect) {
+      modeSelect.addEventListener('change', function (e) {
+        currentCalendarMode = e.target.value;
+        renderCalendar();
+      });
+    }
+
     loadInitialData();
   });
 
@@ -173,6 +183,7 @@
     renderProgressByEmployee();
     renderEmployeesTable();
     renderSettingsForm();
+    renderCalendar();
   }
 
   // ─── DROPDOWNS ───────────────────────────────────────
@@ -772,6 +783,12 @@
     document.getElementById('filter-deadline-from').addEventListener('change', renderDocumentsTable);
     document.getElementById('filter-deadline-to').addEventListener('change', renderDocumentsTable);
     document.getElementById('btn-clear-doc-filters').addEventListener('click', clearAllDocFilters);
+    document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
+
+    // Calendar
+    document.getElementById('btn-prev-month').addEventListener('click', prevMonth);
+    document.getElementById('btn-next-month').addEventListener('click', nextMonth);
+    document.getElementById('btn-today-month').addEventListener('click', gotoToday);
 
     // Tracking filters
     document.getElementById('tracking-filter-employee').addEventListener('change', renderProgressByEmployee);
@@ -1405,5 +1422,315 @@
       .withSuccessHandler(function (msg) { showLoader(false); showToast(msg, 'info'); })
       .withFailureHandler(function (err) { showLoader(false); showToast('Lỗi gửi email: ' + err.message, 'error'); })
       .testEmail();
+  }
+
+  // ─── EXPORT EXCEL ────────────────────────────────────
+
+  function exportToExcel() {
+    if (typeof XLSX === 'undefined') {
+      showToast('Thư viện Excel đang được tải, vui lòng thử lại sau giây lát...', 'warning');
+      return;
+    }
+
+    // Lấy các giá trị filter hiện tại từ giao diện
+    var searchVal = document.getElementById('search-document-input').value.toLowerCase().trim();
+    var statusVal = document.getElementById('filter-status').value;
+    var empVal = document.getElementById('filter-employee').value;
+    var receiveFrom = document.getElementById('filter-receive-from').value;
+    var receiveTo = document.getElementById('filter-receive-to').value;
+    var deadlineFrom = document.getElementById('filter-deadline-from').value;
+    var deadlineTo = document.getElementById('filter-deadline-to').value;
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Lọc danh sách văn bản tương tự như hiển thị trên table
+    var filteredDocs = appState.documents.filter(function (doc) {
+      var matchSearch = !searchVal ||
+        (doc['Document Name'] && doc['Document Name'].toLowerCase().includes(searchVal)) ||
+        (doc['Document Number'] && doc['Document Number'].toLowerCase().includes(searchVal)) ||
+        (doc.Description && doc.Description.toLowerCase().includes(searchVal));
+
+      var isOverdue = isDeadlineOverdue(doc.Deadline, doc.Status);
+      var docStatus = isOverdue ? 'Quá hạn' : doc.Status;
+      var matchStatus = !statusVal || docStatus === statusVal;
+
+      var matchEmployee = !empVal;
+      if (empVal) {
+        matchEmployee = appState.subTasks.some(t => t['Document ID'] === doc.ID && t.Assignee === empVal);
+      }
+
+      var receiveDate = doc['Receive Date'] || '';
+      var matchReceiveFrom = !receiveFrom || receiveDate >= receiveFrom;
+      var matchReceiveTo = !receiveTo || receiveDate <= receiveTo;
+
+      var docDeadlineDate = doc.Deadline ? doc.Deadline.substring(0, 10) : '';
+      var matchDeadlineFrom = !deadlineFrom || docDeadlineDate >= deadlineFrom;
+      var matchDeadlineTo = !deadlineTo || docDeadlineDate <= deadlineTo;
+
+      return matchSearch && matchStatus && matchEmployee && matchReceiveFrom && matchReceiveTo && matchDeadlineFrom && matchDeadlineTo;
+    });
+
+    if (filteredDocs.length === 0) {
+      showToast('Không có dữ liệu để xuất', 'warning');
+      return;
+    }
+
+    // Chuẩn bị mảng dữ liệu xuất ra Excel
+    var exportData = [];
+    filteredDocs.forEach(function (doc) {
+      // Lấy danh sách công việc con của văn bản hiện tại
+      var tasks = appState.subTasks.filter(t => t['Document ID'] === doc.ID);
+
+      var rawProgress = doc.Progress;
+      var progressVal = (typeof rawProgress === 'number' && rawProgress <= 1 && rawProgress > 0)
+        ? Math.round(rawProgress * 100)
+        : (parseInt(rawProgress) || 0);
+
+      // Gộp các công việc con thành 1 chuỗi, cách nhau bởi ký tự xuống dòng \r\n
+      var subTasksText = tasks.length === 0 ? '' : tasks.map(function (task) {
+        return '- [' + (task.Assignee || 'Chưa giao') + '] ' + task.Title + ' (' + (task.Deadline || 'Không hạn') + ')';
+      }).join('\r\n');
+
+      exportData.push({
+        'Mã văn bản': doc['Document Number'] || '',
+        'Tên văn bản': doc['Document Name'] || '',
+        'Mô tả': doc.Description || '',
+        'Deadline văn bản': doc.Deadline || '',
+        'Mức độ hoàn thành (%)': progressVal,
+        'Trạng thái văn bản': doc.Status || '',
+        'Đánh giá (Tự ĐG / Quản lý ĐG)': '', // Placeholder cho người dùng điền sau
+        'Công việc con': subTasksText
+      });
+    });
+
+    // Chuyển array object thành worksheet
+    var ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Khởi tạo các định dạng (style) cho cell
+    var headerStyle = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "C96442" } },
+      alignment: { vertical: "center", horizontal: "center", wrapText: true },
+      border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }
+    };
+    var cellStyle = {
+      alignment: { vertical: "top", wrapText: true },
+      border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }
+    };
+
+    // Áp dụng định dạng cho từng ô trong bảng (chỉ dùng được với thư viện xlsx-js-style)
+    var range = XLSX.utils.decode_range(ws['!ref']);
+    for (var R = range.s.r; R <= range.e.r; ++R) {
+      for (var C = range.s.c; C <= range.e.c; ++C) {
+        var cell_address = { c: C, r: R };
+        var cell_ref = XLSX.utils.encode_cell(cell_address);
+        if (!ws[cell_ref]) continue;
+        if (R === 0) {
+          ws[cell_ref].s = headerStyle; // Dòng đầu tiên là Header
+        } else {
+          ws[cell_ref].s = cellStyle; // Các dòng dữ liệu
+        }
+      }
+    }
+
+    // Tự động điều chỉnh độ rộng kích thước cột
+    var wscols = [
+      { wch: 15 }, // Mã
+      { wch: 40 }, // Tên
+      { wch: 40 }, // Mô tả
+      { wch: 18 }, // Deadline VB
+      { wch: 22 }, // Tiến độ
+      { wch: 20 }, // Trạng thái VB
+      { wch: 30 }, // Đánh giá
+      { wch: 60 }  // Việc con (rộng hơn vì gộp chung nhiều việc)
+    ];
+    ws['!cols'] = wscols;
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "VanBan_CongViec");
+
+    var fileName = "DanhSachVanBan_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+    XLSX.writeFile(wb, fileName);
+
+    showToast('Xuất Excel thành công!');
+  }
+
+  // ─── CALENDAR RENDERER ───────────────────────────────
+
+  var currentDateForCalendar = new Date();
+  var currentCalendarMode = 'week'; // 'week' or 'month'
+
+  function renderCalendar() {
+    var grid = document.getElementById('calendar-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    var year = currentDateForCalendar.getFullYear();
+    var month = currentDateForCalendar.getMonth();
+    var date = currentDateForCalendar.getDate();
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (currentCalendarMode === 'week') {
+      grid.className = 'calendar-grid week-mode';
+
+      // Tìm ngày Thứ 2 của tuần hiện tại
+      var currentDayOfWeek = currentDateForCalendar.getDay();
+      var distanceToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+
+      var monday = new Date(year, month, date + distanceToMonday);
+      var sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+
+      document.getElementById('calendar-month-label').textContent = 'Tuần: ' + String(monday.getDate()).padStart(2, '0') + '/' + (monday.getMonth() + 1) + ' - ' + String(sunday.getDate()).padStart(2, '0') + '/' + (sunday.getMonth() + 1);
+
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        var isToday = d.getTime() === today.getTime();
+        var isOtherMonth = d.getMonth() !== today.getMonth(); // Đánh dấu mờ nếu khác tháng hiện tại của "hôm nay"
+        grid.appendChild(createCalendarCell(d, isOtherMonth, isToday, false)); // false = không giới hạn task
+      }
+
+    } else {
+      grid.className = 'calendar-grid month-mode';
+      document.getElementById('calendar-month-label').textContent = 'Tháng ' + (month + 1) + ' / ' + year;
+
+      var firstDayOfMonth = new Date(year, month, 1);
+      var lastDayOfMonth = new Date(year, month + 1, 0);
+
+      var startDayOfWeek = firstDayOfMonth.getDay();
+      var totalDaysInMonth = lastDayOfMonth.getDate();
+
+      var prevMonthLastDay = new Date(year, month, 0).getDate();
+      for (var i = startDayOfWeek - 1; i >= 0; i--) {
+        grid.appendChild(createCalendarCell(new Date(year, month - 1, prevMonthLastDay - i), true, false));
+      }
+
+      for (var i = 1; i <= totalDaysInMonth; i++) {
+        var d = new Date(year, month, i);
+        grid.appendChild(createCalendarCell(d, false, d.getTime() === today.getTime()));
+      }
+
+      var cellsAdded = startDayOfWeek + totalDaysInMonth;
+      var remainingCells = (cellsAdded <= 35 ? 35 : 42) - cellsAdded;
+      for (var i = 1; i <= remainingCells; i++) {
+        grid.appendChild(createCalendarCell(new Date(year, month + 1, i), true, false));
+      }
+    }
+  }
+
+  function createCalendarCell(dateObj, isOtherMonth, isToday) {
+    var cell = document.createElement('div');
+    cell.className = 'calendar-cell' + (isOtherMonth ? ' other-month' : '') + (isToday ? ' today' : '');
+
+    var label = document.createElement('div');
+    label.className = 'calendar-date-label';
+    label.textContent = dateObj.getDate();
+    cell.appendChild(label);
+
+    var dateStr = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+
+    // Tìm các công việc con có deadline rơi vào ngày này
+    var tasksForDate = appState.subTasks.filter(function (t) {
+      return t.Deadline && t.Deadline.substring(0, 10) === dateStr;
+    });
+
+    // Tạo container để chứa các task và cho phép scroll
+    var tasksContainer = document.createElement('div');
+    tasksContainer.className = 'calendar-tasks-container';
+
+    tasksForDate.forEach(function (t) {
+      var pill = document.createElement('div');
+      var statusClass = 'cal-task-todo';
+      if (t.Status === 'Done') statusClass = 'cal-task-done';
+      else if (t.Status === 'Doing') statusClass = 'cal-task-doing';
+      else if (isDeadlineOverdue(t.Deadline, t.Status)) statusClass = 'cal-task-overdue';
+
+      pill.className = 'cal-task-pill ' + statusClass;
+
+      // Lấy thêm giờ/phút nếu có
+      var timeText = '';
+      if (t.Deadline && t.Deadline.includes('T')) {
+        timeText = '[' + t.Deadline.split('T')[1].substring(0, 5) + '] ';
+      } else if (t.Deadline && t.Deadline.includes(' ')) {
+        timeText = '[' + t.Deadline.split(' ')[1].substring(0, 5) + '] ';
+      }
+
+      pill.textContent = timeText + t.Title;
+      pill.title = t.Title + ' - ' + t.Assignee;
+
+      // Khi click vào công việc trên lịch, hiển thị modal thông tin chi tiết
+      pill.onclick = function (e) {
+        e.stopPropagation();
+        showCalendarTaskModal(t);
+      };
+      tasksContainer.appendChild(pill);
+    });
+
+    cell.appendChild(tasksContainer);
+
+    return cell;
+  }
+
+  // Hàm hiển thị modal thông tin chi tiết công việc từ Lịch
+  function showCalendarTaskModal(task) {
+    var parentDoc = appState.documents.find(d => d.ID === task['Document ID']);
+    var docNumber = parentDoc && parentDoc['Document Number'] ? parentDoc['Document Number'] : 'Chưa có số hiệu';
+    var docName = parentDoc ? parentDoc['Document Name'] : 'Không xác định';
+    document.getElementById('cal-modal-doc-combined-name').textContent = '[' + docNumber + ']_' + docName;
+
+    // Format lại deadline của văn bản cha
+    var docDeadlineText = 'Không có';
+    if (parentDoc && parentDoc.Deadline) {
+      docDeadlineText = parentDoc.Deadline.replace('T', ' ');
+    }
+    document.getElementById('cal-modal-doc-deadline').textContent = docDeadlineText;
+
+    document.getElementById('cal-modal-task-name').textContent = task.Title;
+    document.getElementById('cal-modal-assignee').textContent = task.Assignee || 'Chưa phân công';
+    document.getElementById('cal-modal-deadline').textContent = task.Deadline || 'Không có';
+
+    var badge = document.getElementById('cal-modal-status-badge');
+    badge.className = 'badge';
+    var isOver = isDeadlineOverdue(task.Deadline, task.Status);
+    if (isOver) { badge.classList.add('badge-overdue'); badge.textContent = 'Quá hạn'; }
+    else if (task.Status === 'Done') { badge.classList.add('badge-done'); badge.textContent = 'Hoàn thành'; }
+    else if (task.Status === 'Doing') { badge.classList.add('badge-doing'); badge.textContent = 'Đang thực hiện'; }
+    else { badge.classList.add('badge-new'); badge.textContent = 'Cần làm'; }
+
+    // Gắn sự kiện cho nút Xem chi tiết văn bản
+    document.getElementById('btn-cal-modal-view-doc').onclick = function () {
+      closeModal('calendar-task-modal');
+      switchView('documents-view');
+      viewDocumentDetails(task['Document ID']);
+    };
+
+    openModal('calendar-task-modal');
+  }
+
+  function prevMonth() {
+    if (currentCalendarMode === 'week') {
+      currentDateForCalendar.setDate(currentDateForCalendar.getDate() - 7);
+    } else {
+      currentDateForCalendar.setMonth(currentDateForCalendar.getMonth() - 1);
+    }
+    renderCalendar();
+  }
+
+  function nextMonth() {
+    if (currentCalendarMode === 'week') {
+      currentDateForCalendar.setDate(currentDateForCalendar.getDate() + 7);
+    } else {
+      currentDateForCalendar.setMonth(currentDateForCalendar.getMonth() + 1);
+    }
+    renderCalendar();
+  }
+
+  function gotoToday() {
+    currentDateForCalendar = new Date();
+    renderCalendar();
   }
 </script>

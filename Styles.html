@@ -1814,4 +1814,158 @@
       align-items: stretch;
     }
   }
+
+  /* ─── CALENDAR VIEW ───────────────────────────────── */
+  .calendar-container {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .calendar-grid.month-mode {
+    min-height: 400px;
+  }
+
+  .calendar-grid.week-mode {
+    height: calc(100vh - 220px);
+    /* Giới hạn chiều cao lưới theo màn hình để cuộn được */
+    min-height: 400px;
+  }
+
+  .calendar-cell {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 6px;
+    background-color: var(--bg-input);
+    transition: var(--transition-fast);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+    /* Ẩn phần bị tràn ra ngoài ô */
+  }
+
+  .calendar-grid.month-mode .calendar-cell {
+    height: 140px;
+    /* Cố định chiều cao cho chế độ Tháng */
+  }
+
+  .calendar-grid.week-mode .calendar-cell {
+    height: 100%;
+    /* Tràn viền lưới để kích hoạt thanh cuộn của tasks container */
+  }
+
+  .calendar-tasks-container {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 2px;
+  }
+
+  /* Tuỳ chỉnh thanh cuộn cho nhỏ gọn và thẩm mỹ */
+  .calendar-tasks-container::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .calendar-tasks-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .calendar-tasks-container::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 4px;
+  }
+
+  .calendar-tasks-container:hover::-webkit-scrollbar-thumb {
+    background-color: var(--text-light);
+  }
+
+  .calendar-cell.other-month {
+    opacity: 0.4;
+    background-color: transparent;
+  }
+
+  .calendar-cell.today {
+    border-color: var(--primary);
+    background-color: var(--primary-light);
+  }
+
+  .calendar-date-label {
+    text-align: right;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .calendar-cell.today .calendar-date-label {
+    color: var(--primary);
+  }
+
+  .cal-task-pill {
+    font-size: 11.5px;
+    padding: 6px 8px;
+    /* Tăng padding để nhìn thoáng hơn */
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    font-weight: 500;
+    flex-shrink: 0;
+    /* BẮT BUỘC KHÔNG BỊ BÓP MÉO */
+    min-height: 28px;
+    /* Đảm bảo luôn có chiều cao tối thiểu */
+    display: flex;
+    align-items: center;
+  }
+
+  .cal-task-todo {
+    background-color: var(--status-new-bg);
+    color: var(--status-new-text);
+    border-color: var(--status-new-border);
+  }
+
+  .cal-task-doing {
+    background-color: var(--status-doing-bg);
+    color: var(--status-doing-text);
+    border-color: var(--status-doing-border);
+  }
+
+  .cal-task-done {
+    background-color: var(--status-done-bg);
+    color: var(--status-done-text);
+    border-color: var(--status-done-border);
+  }
+
+  .cal-task-overdue {
+    background-color: var(--status-overdue-bg);
+    color: var(--status-overdue-text);
+    border-color: var(--status-overdue-border);
+  }
 </style>
