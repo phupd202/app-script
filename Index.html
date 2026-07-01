@@ -328,9 +328,29 @@
       <section id="employees-view" class="section-view">
         <div class="header-title-row">
           <h1>Danh sách Nhân sự</h1>
-          <button class="btn btn-primary" id="btn-add-employee">
-            <i class="material-icons">person_add</i> Thêm nhân viên
-          </button>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-secondary" id="btn-import-employees">
+              <i class="material-icons">upload_file</i> Import danh sách
+            </button>
+            <button class="btn btn-primary" id="btn-add-employee">
+              <i class="material-icons">person_add</i> Thêm nhân viên
+            </button>
+          </div>
+        </div>
+
+        <!-- Department Manager Section -->
+        <div class="dept-manager-section" style="max-width: 800px;">
+          <h3 style="font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <i class="material-icons" style="font-size:18px;color:var(--primary);">business</i>
+            Quản lý Phòng ban
+          </h3>
+          <form id="dept-form" onsubmit="event.preventDefault();" style="display:flex;gap:10px;">
+            <input type="text" id="dept-name-input" class="form-control" placeholder="Tên phòng ban mới..." style="flex:1;" required>
+            <button class="btn btn-secondary btn-sm" type="submit" id="btn-add-dept">Thêm</button>
+          </form>
+          <div class="dept-chips-container" id="dept-chips-container">
+            <!-- Populated dynamically -->
+          </div>
         </div>
 
         <div class="table-wrapper" style="max-width: 800px;">
@@ -533,6 +553,18 @@
             <textarea id="doc-description" class="form-control" rows="3"
               placeholder="Chi tiết chỉ đạo hoặc tóm tắt công việc..."></textarea>
           </div>
+          
+          <div class="inline-subtasks-container">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <label style="font-weight:700;margin:0;">Công việc con (Tùy chọn)</label>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-doc-subtask">
+                <i class="material-icons" style="font-size:14px;">add</i> Thêm công việc
+              </button>
+            </div>
+            <div id="doc-subtasks-wrapper">
+              <!-- Dynamically added subtasks go here -->
+            </div>
+          </div>
         </form>
       </div>
       <div class="modal-footer">
@@ -709,7 +741,10 @@
 
           <div class="form-group">
             <label for="emp-department">Phòng ban / Bộ phận *</label>
-            <input type="text" id="emp-department" class="form-control" required placeholder="Ví dụ: Phòng Kế hoạch">
+            <select id="emp-department" class="form-control" required>
+              <option value="">-- Chọn phòng ban --</option>
+              <!-- Populated dynamically -->
+            </select>
           </div>
         </form>
       </div>
@@ -775,6 +810,30 @@
   </div>
 
   <!-- Client-side Logic Script Component -->
+  <!-- 5. Bulk Import Modal -->
+  <div id="import-employees-modal" class="modal-backdrop">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2 id="import-employees-title">Import Danh Sách Nhân Viên</h2>
+        <button class="modal-close-btn" onclick="closeModal('import-employees-modal')">
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Dán danh sách nhân viên từ Excel hoặc Google Sheets vào ô dưới đây. Mỗi dòng một nhân viên, định dạng: <strong>Tên nhân viên [tab/phẩy] Tên phòng ban</strong>.
+        </p>
+        <textarea id="import-employees-data" class="form-control bulk-import-textarea" placeholder="Nguyễn Văn A    Phòng Kỹ Thuật&#10;Trần Thị B    Phòng Kế Toán"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('import-employees-modal')">Hủy</button>
+        <button class="btn btn-primary" id="btn-submit-import">
+          <i class="material-icons">save</i> Import dữ liệu
+        </button>
+      </div>
+    </div>
+  </div>
+
   <?!= include('JavaScript'); ?>
 </body>
 

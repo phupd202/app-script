@@ -182,6 +182,7 @@
     renderDocumentsTable();
     renderProgressByEmployee();
     renderEmployeesTable();
+    renderDepartmentManager();
     renderSettingsForm();
     renderCalendar();
   }
@@ -191,19 +192,33 @@
   function populateDropdowns() {
     var filterEmp = document.getElementById('filter-employee');
     var trackingFilterEmp = document.getElementById('tracking-filter-employee');
-    var subtaskAssignee = document.getElementById('inline-subtask-assignee');
+    var empDept = document.getElementById('emp-department');
 
     var empOptions = '<option value="">Tất cả nhân viên</option>';
-    var formOptions = '<option value="">-- Chọn nhân viên --</option>';
 
     appState.employees.forEach(function (emp) {
-      empOptions += `<option value="${emp.Name}">${emp.Name} (${emp.Department})</option>`;
-      formOptions += `<option value="${emp.Name}">${emp.Name}</option>`;
+      empOptions += `<option value="${emp.Name}">${emp.Name} (${getDeptName(emp['Department ID'])})</option>`;
     });
 
     filterEmp.innerHTML = empOptions;
     trackingFilterEmp.innerHTML = empOptions;
-    subtaskAssignee.innerHTML = formOptions;
+
+    if (empDept) {
+      var deptOptions = '<option value="">-- Chọn phòng ban --</option>';
+      if (appState.departments) {
+        appState.departments.forEach(function (d) {
+          deptOptions += `<option value="${d.ID}">${d.Name}</option>`;
+        });
+      }
+      empDept.innerHTML = deptOptions;
+    }
+
+    // Also upgrade inline subtask assignee picker if it exists
+    var inlineAssignee = document.getElementById('inline-subtask-assignee');
+    if (inlineAssignee && !inlineAssignee.dataset.pickerInit) {
+      createEmployeePicker(inlineAssignee);
+      inlineAssignee.dataset.pickerInit = 'true';
+    }
   }
 
   // ─── DASHBOARD RENDERER ──────────────────────────────
@@ -685,7 +700,7 @@
             <div class="workload-header-top">
               <div>
                 <h3>${emp.Name}</h3>
-                <div class="workload-header-dept">${emp.Department}</div>
+                <div class="workload-header-dept">${getDeptName(emp['Department ID'])}</div>
               </div>
               <span class="workload-task-count">
                 <i class="material-icons" style="font-size:13px;">task_alt</i>
@@ -717,7 +732,7 @@
         <tr>
           <td><span class="badge" style="background-color: #f1f5f9; color: #475569;">${emp.ID || ('EMP-' + (index + 1))}</span></td>
           <td><strong>${emp.Name}</strong></td>
-          <td>${emp.Department}</td>
+          <td>${getDeptName(emp['Department ID'])}</td>
           <td style="text-align: right;">
             <div class="actions-cell" style="justify-content: flex-end;">
               <button class="btn btn-secondary btn-icon-only btn-sm" onclick="openEditEmployeeModal('${emp.ID}')" title="Sửa">
@@ -841,6 +856,11 @@
     document.getElementById('document-form').reset();
     document.getElementById('doc-id').value = '';
     document.getElementById('doc-receive-date').value = new Date().toISOString().split('T')[0];
+
+    docSubtasks = [];
+    renderDocSubtasks();
+    document.querySelector('.inline-subtasks-container').style.display = 'block';
+
     openModal('document-modal');
   }
 
@@ -854,6 +874,9 @@
     document.getElementById('doc-receive-date').value = doc['Receive Date'];
     document.getElementById('doc-deadline').value = doc.Deadline ? doc.Deadline.replace(' ', 'T') : '';
     document.getElementById('doc-description').value = doc.Description || '';
+
+    document.querySelector('.inline-subtasks-container').style.display = 'none'; // hide subtasks when editing doc to keep simple
+
     openModal('document-modal');
   }
 
@@ -914,7 +937,9 @@
       }
     };
 
-    var method = docId ? 'updateDocument' : 'addDocument';
+    var method = docId ? 'updateDocument' : 'addDocumentWithSubTasks';
+    var payload = docId ? docData : [docData, docSubtasks.filter(t => t.title.trim() !== '')];
+
     google.script.run
       .withSuccessHandler(callback)
       .withFailureHandler(function (err) {
@@ -923,7 +948,7 @@
         setBtnLoading(saveBtn, false);
         showToast('Lỗi: ' + err.message, 'error');
       })
-    [method](docData);
+    [method].apply(this, Array.isArray(payload) ? payload : [payload]);
   }
 
   function deleteDocument(docId) {
@@ -1323,7 +1348,7 @@
     document.getElementById('employee-modal-title').textContent = 'Sửa Nhân Viên';
     document.getElementById('emp-id').value = emp.ID;
     document.getElementById('emp-name').value = emp.Name;
-    document.getElementById('emp-department').value = emp.Department;
+    document.getElementById('emp-department').value = emp['Department ID'];
     openModal('employee-modal');
   }
 
@@ -1335,7 +1360,7 @@
     var empData = {
       id: empId,
       name: document.getElementById('emp-name').value.trim(),
-      department: document.getElementById('emp-department').value.trim()
+      departmentId: document.getElementById('emp-department').value
     };
 
     var saveBtn = document.getElementById('btn-submit-employee');
@@ -1344,11 +1369,11 @@
 
     var tempEmp = null;
     if (!empId) {
-      tempEmp = { ID: '__tmp_emp_' + Date.now(), Name: empData.name, Department: empData.department };
+      tempEmp = { ID: '__tmp_emp_' + Date.now(), Name: empData.name, 'Department ID': empData.departmentId };
       appState.employees.push(tempEmp);
     } else {
       var existing = appState.employees.find(e => e.ID === empId);
-      if (existing) { existing.Name = empData.name; existing.Department = empData.department; }
+      if (existing) { existing.Name = empData.name; existing['Department ID'] = empData.departmentId; }
     }
     renderEmployeesTable(); populateDropdowns();
 
@@ -1732,5 +1757,286 @@
   function gotoToday() {
     currentDateForCalendar = new Date();
     renderCalendar();
+  }
+
+  // ─── V2.0 NEW COMPONENTS ─────────────────────────────
+
+  function getDeptName(deptId) {
+    if (!appState.departments) return deptId || 'Chưa phân bổ';
+    var dept = appState.departments.find(d => d.ID === deptId);
+    return dept ? dept.Name : (deptId || 'Chưa phân bổ');
+  }
+
+  // Department Manager
+  function renderDepartmentManager() {
+    var container = document.getElementById('dept-chips-container');
+    if (!container || !appState.departments) return;
+    container.innerHTML = appState.departments.map(d => `
+      <div class="dept-chip">
+        <i class="material-icons" style="font-size:14px;color:var(--primary);">domain</i>
+        ${d.Name}
+        <i class="material-icons dept-chip-delete" onclick="deleteDept('${d.ID}')" style="font-size:14px;">close</i>
+      </div>
+    `).join('');
+  }
+
+  var deptForm = document.getElementById('dept-form');
+  if (deptForm) {
+    deptForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var nameInput = document.getElementById('dept-name-input');
+      var name = nameInput.value.trim();
+      if (!name) return;
+
+      var btn = document.getElementById('btn-add-dept');
+      setBtnLoading(btn, true);
+
+      google.script.run
+        .withSuccessHandler(function (data) {
+          appState = data;
+          nameInput.value = '';
+          renderAll();
+          setBtnLoading(btn, false);
+          showToast('Thêm phòng ban thành công');
+        })
+        .withFailureHandler(function (err) {
+          setBtnLoading(btn, false);
+          showToast('Lỗi: ' + err.message, 'error');
+        })
+        .addDepartment({ name: name });
+    });
+  }
+
+  function deleteDept(deptId) {
+    if (!confirm('Bạn có chắc muốn xóa phòng ban này? Không thể xóa nếu đang có nhân viên.')) return;
+    showLoader(true);
+    google.script.run
+      .withSuccessHandler(function (data) {
+        appState = data;
+        renderAll();
+        showLoader(false);
+        showToast('Đã xóa phòng ban');
+      })
+      .withFailureHandler(function (err) {
+        showLoader(false);
+        showToast('Lỗi: ' + err.message, 'error');
+      })
+      .deleteDepartment(deptId);
+  }
+
+  // Bulk Import
+  var btnImport = document.getElementById('btn-import-employees');
+  if (btnImport) {
+    btnImport.addEventListener('click', function () {
+      document.getElementById('import-employees-data').value = '';
+      openModal('import-employees-modal');
+    });
+  }
+
+  var btnSubmitImport = document.getElementById('btn-submit-import');
+  if (btnSubmitImport) {
+    btnSubmitImport.addEventListener('click', function () {
+      var text = document.getElementById('import-employees-data').value;
+      if (!text.trim()) {
+        showToast('Vui lòng nhập dữ liệu', 'warning');
+        return;
+      }
+
+      var lines = text.split('\n');
+      var employeesData = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        // split by tab or comma
+        var parts = line.split(/\t|,/);
+        if (parts.length >= 2) {
+          employeesData.push({
+            name: parts[0].trim(),
+            department: parts[1].trim()
+          });
+        }
+      }
+
+      if (employeesData.length === 0) {
+        showToast('Không tìm thấy dữ liệu hợp lệ. Vui lòng kiểm tra định dạng.', 'warning');
+        return;
+      }
+
+      var btn = this;
+      setBtnLoading(btn, true);
+
+      google.script.run
+        .withSuccessHandler(function (data) {
+          appState = data;
+          renderAll();
+          setBtnLoading(btn, false);
+          closeModal('import-employees-modal');
+          showToast('Đã import thành công ' + employeesData.length + ' nhân viên');
+        })
+        .withFailureHandler(function (err) {
+          setBtnLoading(btn, false);
+          showToast('Lỗi import: ' + err.message, 'error');
+        })
+        .bulkImportEmployees(employeesData);
+    });
+  }
+
+  // Employee Picker Component
+  function createEmployeePicker(inputEl) {
+    var container = document.createElement('div');
+    container.className = 'emp-picker-container';
+
+    var inputWrapper = document.createElement('div');
+    inputWrapper.className = 'emp-picker-input-wrapper';
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'emp-picker-input';
+    input.placeholder = 'Chọn nhân sự...';
+    input.value = inputEl.value; // init
+
+    var icon = document.createElement('i');
+    icon.className = 'material-icons';
+    icon.style.color = 'var(--text-muted)';
+    icon.style.fontSize = '18px';
+    icon.textContent = 'person_search';
+
+    inputWrapper.appendChild(icon);
+    inputWrapper.appendChild(input);
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'emp-picker-dropdown';
+
+    container.appendChild(inputWrapper);
+    container.appendChild(dropdown);
+
+    inputEl.parentNode.insertBefore(container, inputEl);
+    inputEl.style.display = 'none'; // hide original
+
+    // Group employees by department
+    function renderDropdown(filterText) {
+      filterText = (filterText || '').toLowerCase();
+      var groups = {};
+      appState.employees.forEach(emp => {
+        if (!filterText || emp.Name.toLowerCase().includes(filterText) || getDeptName(emp['Department ID']).toLowerCase().includes(filterText)) {
+          var dName = getDeptName(emp['Department ID']);
+          if (!groups[dName]) groups[dName] = [];
+          groups[dName].push(emp);
+        }
+      });
+
+      var html = '';
+      var hasItems = false;
+      Object.keys(groups).sort().forEach(dName => {
+        html += `<div class="emp-picker-group">${dName}</div>`;
+        groups[dName].forEach(emp => {
+          hasItems = true;
+          html += `<div class="emp-picker-item" data-name="${emp.Name}">
+                     <i class="material-icons">person</i> ${emp.Name}
+                   </div>`;
+        });
+      });
+
+      if (!hasItems) {
+        html = '<div class="emp-picker-empty">Không tìm thấy nhân viên</div>';
+      }
+      dropdown.innerHTML = html;
+
+      // Bind clicks
+      dropdown.querySelectorAll('.emp-picker-item').forEach(item => {
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault(); // prevent blur
+          var name = this.getAttribute('data-name');
+          input.value = name;
+          inputEl.value = name;
+          dropdown.classList.remove('show');
+        });
+      });
+    }
+
+    input.addEventListener('focus', function () {
+      renderDropdown(this.value);
+      dropdown.classList.add('show');
+    });
+
+    input.addEventListener('blur', function () {
+      dropdown.classList.remove('show');
+      inputEl.value = this.value; // Sync on blur in case they typed manually
+    });
+
+    input.addEventListener('input', function () {
+      renderDropdown(this.value);
+      inputEl.value = this.value;
+    });
+
+    return { container, input, dropdown };
+  }
+
+  // Inline Document Subtasks
+  var docSubtasks = [];
+  function addDocSubtaskRow() {
+    docSubtasks.push({ id: 'tmp_' + Date.now(), title: '', assignee: '', deadline: '' });
+    renderDocSubtasks();
+  }
+
+  function removeDocSubtaskRow(idx) {
+    docSubtasks.splice(idx, 1);
+    renderDocSubtasks();
+  }
+
+  function renderDocSubtasks() {
+    var wrapper = document.getElementById('doc-subtasks-wrapper');
+    if (!wrapper) return;
+    if (docSubtasks.length === 0) {
+      wrapper.innerHTML = '';
+      return;
+    }
+
+    wrapper.innerHTML = '';
+    docSubtasks.forEach((st, idx) => {
+      var row = document.createElement('div');
+      row.className = 'inline-subtask-row';
+
+      var titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.className = 'form-control';
+      titleInput.placeholder = 'Tên công việc...';
+      titleInput.value = st.title;
+      titleInput.oninput = e => docSubtasks[idx].title = e.target.value;
+
+      var assigneeWrapper = document.createElement('div');
+      var assigneeInput = document.createElement('input');
+      assigneeInput.type = 'text';
+      assigneeInput.value = st.assignee;
+      assigneeWrapper.appendChild(assigneeInput);
+
+      var deadlineInput = document.createElement('input');
+      deadlineInput.type = 'datetime-local';
+      deadlineInput.className = 'form-control';
+      deadlineInput.value = st.deadline;
+      deadlineInput.oninput = e => docSubtasks[idx].deadline = e.target.value;
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-danger btn-icon-only btn-sm';
+      delBtn.innerHTML = '<i class="material-icons" style="font-size:16px;">close</i>';
+      delBtn.onclick = () => removeDocSubtaskRow(idx);
+
+      row.appendChild(titleInput);
+      row.appendChild(assigneeWrapper);
+      row.appendChild(deadlineInput);
+      row.appendChild(delBtn);
+
+      wrapper.appendChild(row);
+
+      // Upgrade assigneeInput to Picker
+      var picker = createEmployeePicker(assigneeInput);
+      picker.input.addEventListener('input', e => docSubtasks[idx].assignee = picker.input.value);
+      picker.input.addEventListener('blur', e => docSubtasks[idx].assignee = picker.input.value);
+    });
+  }
+
+  var btnAddDocSubtask = document.getElementById('btn-add-doc-subtask');
+  if (btnAddDocSubtask) {
+    btnAddDocSubtask.addEventListener('click', addDocSubtaskRow);
   }
 </script>

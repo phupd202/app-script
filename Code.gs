@@ -99,18 +99,49 @@ function initDatabase() {
     }
   }
   
-  // 3. Employees Sheet
+  // 3. Departments Sheet
+  var deptSheet = ss.getSheetByName('Departments');
+  if (!deptSheet) {
+    deptSheet = ss.insertSheet('Departments');
+    deptSheet.appendRow(['ID', 'Name']);
+    deptSheet.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#f3f4f6');
+    deptSheet.appendRow(['DEPT-1', 'Phòng Kỹ thuật']);
+  }
+  
+  // 4. Employees Sheet
   var empSheet = ss.getSheetByName('Employees');
   if (!empSheet) {
     empSheet = ss.insertSheet('Employees');
-    empSheet.appendRow(['ID', 'Name', 'Department']);
+    empSheet.appendRow(['ID', 'Name', 'Department ID']);
     empSheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#f3f4f6');
     
     // Add default sample employees
-    empSheet.appendRow(['EMP-1', 'Nguyễn Văn A', 'Phòng Kỹ thuật']);
+    empSheet.appendRow(['EMP-1', 'Nguyễn Văn A', 'DEPT-1']);
+  } else {
+    var eHeaders = empSheet.getRange(1, 1, 1, empSheet.getLastColumn()).getValues()[0];
+    if (eHeaders[2] === 'Department') {
+      empSheet.getRange(1, 3).setValue('Department ID');
+      var eData = empSheet.getDataRange().getValues();
+      var deptMap = {};
+      var dData = deptSheet.getDataRange().getValues();
+      for (var d = 1; d < dData.length; d++) {
+        deptMap[dData[d][1]] = dData[d][0];
+      }
+      for (var i = 1; i < eData.length; i++) {
+        var deptName = eData[i][2];
+        if (deptName && !deptName.startsWith('DEPT-')) {
+          if (!deptMap[deptName]) {
+            var newDeptId = 'DEPT-' + Date.now() + Math.floor(Math.random()*1000);
+            deptSheet.appendRow([newDeptId, deptName]);
+            deptMap[deptName] = newDeptId;
+          }
+          empSheet.getRange(i + 1, 3).setValue(deptMap[deptName]);
+        }
+      }
+    }
   }
   
-  // 4. Settings Sheet
+  // 5. Settings Sheet
   var settingsSheet = ss.getSheetByName('Settings');
   if (!settingsSheet) {
     settingsSheet = ss.insertSheet('Settings');
@@ -146,6 +177,7 @@ function getInitialData(ss) {
     documents: getDocumentsList(ss),
     subTasks: getSubTasksList(ss),
     employees: getEmployeesList(ss),
+    departments: getDepartmentsList(ss),
     settings: getSettingsData(ss)
   };
 }
@@ -226,6 +258,10 @@ function getEmployeesList(ss) {
   return readSheetAsJson(ss, 'Employees');
 }
 
+function getDepartmentsList(ss) {
+  return readSheetAsJson(ss, 'Departments');
+}
+
 function getSettingsData(ss) {
   var list = readSheetAsJson(ss, 'Settings');
   var settings = {};
@@ -261,6 +297,64 @@ function addDocument(doc) {
   ];
   
   sheet.appendRow(row);
+  return getInitialData(ss);
+}
+
+function addDocumentWithSubTasks(doc, subTasks) {
+  var ss = getSpreadsheet();
+  
+  // 1. Validate deadlines first to avoid partial creation
+  if (doc.deadline && subTasks && subTasks.length > 0) {
+    var pTime = parseDateTime(doc.deadline).getTime();
+    for (var i = 0; i < subTasks.length; i++) {
+      if (subTasks[i].deadline) {
+        var tTime = parseDateTime(subTasks[i].deadline).getTime();
+        if (tTime > pTime) {
+          throw new Error('Hạn chót công việc con không được vượt quá hạn chót của văn bản cha!');
+        }
+      }
+    }
+  }
+  
+  // 2. Add document
+  var docSheet = ss.getSheetByName('Documents');
+  var docId = 'DOC-' + Date.now() + Math.floor(Math.random() * 100);
+  var docRow = [
+    docId,
+    doc.receiveDate,
+    doc.docNumber,
+    doc.docName,
+    doc.description,
+    doc.deadline,
+    '0%',
+    'Mới tạo'
+  ];
+  docSheet.appendRow(docRow);
+  
+  // 3. Add subtasks
+  if (subTasks && subTasks.length > 0) {
+    var taskSheet = ss.getSheetByName('SubTasks');
+    for (var i = 0; i < subTasks.length; i++) {
+      var task = subTasks[i];
+      var taskId = 'TSK-' + Date.now() + Math.floor(Math.random() * 1000) + i;
+      task.docId = docId;
+      var eventId = '';
+      try { eventId = syncToCalendar('CREATE', task, null) || ''; } catch(e) {}
+      
+      var taskRow = [
+        taskId,
+        docId,
+        task.title,
+        task.assignee,
+        task.deadline || '',
+        'Todo',
+        eventId
+      ];
+      taskSheet.appendRow(taskRow);
+    }
+    recalculateDocProgress(ss, docId);
+  }
+  
   return getInitialData(ss);
 }
 
@@ -538,13 +632,56 @@ function recalculateDocProgress(ss, docId) {
   }
 }
 
+// --- DEPARTMENTS CRUD ---
+
+function addDepartment(dept) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Departments');
+  var id = 'DEPT-' + Date.now() + Math.floor(Math.random() * 100);
+  sheet.appendRow([id, dept.name]);
+  return getInitialData(ss);
+}
+
+function updateDepartment(dept) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Departments');
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === dept.id) {
+      sheet.getRange(i + 1, 2).setValue(dept.name);
+      break;
+    }
+  }
+  return getInitialData(ss);
+}
+
+function deleteDepartment(deptId) {
+  var ss = getSpreadsheet();
+  var empSheet = ss.getSheetByName('Employees');
+  var empData = empSheet.getDataRange().getValues();
+  for (var i = 1; i < empData.length; i++) {
+    if (empData[i][2] === deptId) {
+      throw new Error("Không thể xóa phòng ban đang có nhân viên.");
+    }
+  }
+  var sheet = ss.getSheetByName('Departments');
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === deptId) {
+      sheet.deleteRow(i + 1);
+      break;
+    }
+  }
+  return getInitialData(ss);
+}
+
 // --- EMPLOYEES CRUD ---
 
 function addEmployee(emp) {
   var ss = getSpreadsheet();
   var sheet = ss.getSheetByName('Employees');
   var id = 'EMP-' + Date.now();
-  sheet.appendRow([id, emp.name, emp.department]);
+  sheet.appendRow([id, emp.name, emp.departmentId]);
   return getInitialData(ss);
 }
 
@@ -557,7 +694,7 @@ function updateEmployee(emp) {
     if (data[i][0] === emp.id) {
       var rowNum = i + 1;
       sheet.getRange(rowNum, 2).setValue(emp.name);
-      sheet.getRange(rowNum, 3).setValue(emp.department);
+      sheet.getRange(rowNum, 3).setValue(emp.departmentId);
       break;
     }
   }
@@ -575,6 +712,37 @@ function deleteEmployee(empId) {
       break;
     }
   }
+  return getInitialData(ss);
+}
+
+function bulkImportEmployees(employeesData) {
+  var ss = getSpreadsheet();
+  var deptSheet = ss.getSheetByName('Departments');
+  var empSheet = ss.getSheetByName('Employees');
+  
+  var dData = deptSheet.getDataRange().getValues();
+  var deptMap = {}; // name -> ID
+  for (var d = 1; d < dData.length; d++) {
+    deptMap[dData[d][1].toLowerCase().trim()] = dData[d][0];
+  }
+  
+  for (var i = 0; i < employeesData.length; i++) {
+    var e = employeesData[i];
+    if (!e.name || !e.department) continue;
+    var dName = e.department.trim();
+    var dKey = dName.toLowerCase();
+    
+    var deptId = deptMap[dKey];
+    if (!deptId) {
+      deptId = 'DEPT-' + Date.now() + Math.floor(Math.random() * 1000) + i;
+      deptSheet.appendRow([deptId, dName]);
+      deptMap[dKey] = deptId;
+    }
+    
+    var empId = 'EMP-' + Date.now() + Math.floor(Math.random() * 1000) + i;
+    empSheet.appendRow([empId, e.name.trim(), deptId]);
+  }
+  
   return getInitialData(ss);
 }
 
